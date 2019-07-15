@@ -1,0 +1,35 @@
+{
+  "name": "iotb",
+  "description": "IoTB - IoT Broker - Scriptable micro cloud services with REST API and web hosting environment.",
+  "author": "Klaus Weichinger <snaky.1@gmx.at>",
+  "version": "19.07.15",
+  "homepage": "https://github.com/weingaunity/iotb",
+  "license": "GPL-3.0-only",
+  "keywords": [
+    "iot",
+    "broker",
+    "cloud",
+    "service",
+    "script",
+    "scripting",
+    "package",
+    "iotb",
+    "rest",
+    "api"
+  ],
+  "main": "iotbroker.js",
+  "repository": {
+    "private": true
+  },
+  "dependencies": {
+    "adm-zip": ">=0.4.7",
+    "express": "4.16.2",
+    "express-session": "1.15.6",
+    "multer": ">=1.3.0",
+    "sequelize": "4.35.1",
+    "sqlite3": "3.1.13",
+    "web-push": "3.3.3",
+    "node-fetch": "2.5.0"
+  },
+  "engine": "node 8.9.1"
+}

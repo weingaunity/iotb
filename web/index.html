@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<script src="./js/jquery.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="./css/material-icons.css">
+  <link rel="stylesheet" type="text/css" href="./css/quasar.mat.min.css">
+
+  <link rel="stylesheet" href="./css/highlight.default.min.css">
+  <script src="./js/highlight.min.js"></script>
+
+  <script type="text/javascript" src="./js/vue.min.js"></script>
+  <script type="text/javascript" src="./js/quasar.mat.umd.min.js"></script>
+  <script type="text/javascript" src="./js/remarkable.min.js"></script>
+  <link rel="stylesheet" href="./css/github-markdown.css">
+
+  <script type="text/javascript" src="./js/src-min-noconflict/ace.js" charset="utf-8"></script>
+
+  <script type="text/javascript" src="./js/app.js"></script>
+
+  <title>IoTB</title>
+</head>
+
+<body>
+  <div id="q-app">
+  <q-layout view="hHh LpR fff">
+    <q-layout-header>
+      <q-toolbar>
+				<!--<q-btn @click="drawer = !drawer" round="" dense="" flat="" icon="list"></q-btn>-->
+        <q-btn round flat icon="help">
+          <!--<q-tooltip>Help and Documentations</q-tooltip>-->
+          <q-popover>
+            <q-list link style="min-width: 100px">
+              <q-item v-for="(topic) in helpfiles" v-close-overlay @click.native="search('help:'+topic);" >
+                <q-item-main v-bind:label="topic"></q-item-main>
+              </q-item>
+            </q-list>
+          </q-popover>
+        </q-btn>
+        <q-btn v-if="user!=null" round flat icon="extension"  @click.native="search('mythings');">
+          <q-tooltip>Show my things</q-tooltip>
+        </q-btn>
+        <q-btn v-if="user!=null" round flat icon="vpn key" @click.native="search('mykeys');">
+          <q-tooltip>Show my keys</q-tooltip>
+        </q-btn>
+        <q-btn v-if="user!=null" round flat icon="cloud" @click.native="search('mywebsites');">
+          <q-tooltip>Show my web-sites</q-tooltip>
+        </q-btn>
+        <q-toolbar-title>
+          IoTB {{info.brokerversion}}
+          <q-tooltip>Copyright (C) 2018 Weichinger Klaus<br/>License: GPLv3</q-tooltip>
+        </q-toolbar-title>
+        <q-btn round flat icon="input">
+          <q-popover>
+            <q-list link style="min-width: 100px">
+              <q-item v-for="(cmd) in commands" v-close-overlay @click.native="search(cmd.command);" >
+                <q-item-main v-bind:label="cmd.label"></q-item-main>
+              </q-item>
+            </q-list>
+          </q-popover>
+        </q-btn>
+        <q-input style="width:20vw;max-width:200px" placeholder="enter command" inverted v-model="searchinput" label="Open ..." @keyup.enter.native="search();">
+          <q-tooltip>Type in command and press ENTER</q-tooltip>
+        </q-input>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <q-chip v-if="user!=null" icon="account circle">
+           {{user.user}}
+           <q-popover touch-position>
+             <q-list no-border="" link="" inset-delimiter="">
+               <q-list-header>{{user.username}}</q-list-header>
+               <q-item @click.native="search('user');">
+                 <q-item-side icon="account circle"></q-item-side>
+                 <q-item-main>My profile</q-item-main>
+               </q-item>
+               <q-item @click.native="search('mythings');">
+                 <q-item-side icon="extension"></q-item-side>
+                 <q-item-main>My things</q-item-main>
+               </q-item>
+               <q-item @click.native="search('mykeys');">
+                 <q-item-side icon="vpn key"></q-item-side>
+                 <q-item-main>My keys</q-item-main>
+               </q-item>
+               <q-item @click.native="search('mywebsites');">
+                 <q-item-side icon="cloud"></q-item-side>
+                 <q-item-main>My websites</q-item-main>
+               </q-item>
+               <q-item @click.native="sign_out();">
+                 <q-item-side icon="eject"></q-item-side>
+                 <q-item-main>Sign out</q-item-main>
+               </q-item>
+             </q-list>
+           </q-popover>
+        </q-chip>
+        <q-chip v-if="user==null" icon="vpn key" >
+           Sign In
+           <q-popover touch-position>
+             <q-list no-border="" link="" inset-delimiter="">
+               <q-item>
+                 <q-input type="text" v-model:value="logindata.user" float-label="User name" />
+               </q-item>
+               <q-item>
+                 <q-input type="password" v-model:value="logindata.pwd" float-label="Password" v-on:keyup.enter="sign_in();" no-pass-toggle="true" />
+               </q-item>
+               <q-item @click.native="sign_in();" >
+                 <q-item-side icon="exit to app"></q-item-side>
+                 <q-item-main label="Sign in" />
+               </q-item>
+             </q-list>
+           </q-popover>
+        </q-chip>
+      </q-toolbar>
+    </q-layout-header>
+
+
+    <q-page-container>
+      <q-page>
+        <q-page-sticky v-if="countModified>0" position="top-right">
+          <q-btn round color="primary" icon="save" @click.native="saveall();">
+            <q-chip floating small square color="red">{{countModified}}</q-chip>
+         </q-btn>
+       </q-page-sticky>
+        <div class="layout-padding card-examples items-start">
+        <div v-for="(tab,index) in tabs">
+
+          <q-card v-if="tab.type=='notifications'">
+            <q-card-title>
+              Push Notifications
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-list>
+                <q-item multiline>
+                  <q-item-side icon="checkbox"></q-item-side>
+                  <q-item-main>
+                    <q-toggle v-model="tab.enabled" color="secondary" label="Notifications enabled" />
+                  </q-item-main>
+                </q-item>    
+                <q-item multiline>
+                  <q-item-side icon="feedback"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Topics" v-model="tab.topics" class="no-margin" placeholder="Type topics">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+              </q-list>
+            </q-card-main>
+            <q-card-actions>
+                <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
+                <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>  
+          </q-card>
+
+
+          <q-card v-if="tab.type=='favorites'">
+            <q-card-title>
+              <div v-if="tab.hasOwnProperty('title')">
+                  {{tab.title}}
+              </div>
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <div v-if="tab.hasOwnProperty('titleimage')">
+                <img :src="tab.titleimage" :width="tab.titleimagewidth"/>
+              </div>
+              <p></p>
+              <q-toolbar v-for="(favorite,index) in tab.list" color="primary" inverted>
+                <q-btn flat round dense icon="open_in_browser" @click.native="openLink(favorite.href);"></q-btn>
+                <q-toolbar-title @click.native="openLink(favorite.href);">
+                  {{favorite.label}}
+                  <span slot="subtitle">{{favorite.description}}</span>
+                </q-toolbar-title>
+              </q-toolbar>
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='markdown'">
+            <q-card-title>
+              /doc/{{tab.filename}}
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <div class="markdown-body" v-html="tab.html"></div>
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='websiteslist'">
+            <q-card-title>
+              My websites
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-toolbar v-for="(website,index) in tab.list" color="primary" inverted>
+                <q-btn flat round dense icon="create" @click.native="search('website:'+website.website,tab);"></q-btn>
+                <q-toolbar-title>
+                  /website/{{website.website}}
+                  <span slot="subtitle">{{website.description}}</span>
+                  <q-chip v-for="(owner) in website.owners" icon="account circle" small color="teal">{{owner}}</q-chip>
+                  <q-chip v-for="(tag) in website.tags" icon="bookmark" small color="tertiary">{{tag}}</q-chip>
+                </q-toolbar-title>
+              </q-toolbar>
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='keyslist'">
+            <q-card-title>
+              My keys
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-toolbar v-for="(key,index) in tab.list" color="primary" inverted>
+                <q-btn flat round dense icon="create" @click.native="search('key:'+key.key,tab);"></q-btn>
+                <q-toolbar-title>
+                  /key/{{key.key}}
+                  <span slot="subtitle">{{key.description}}</span>
+                  <q-chip v-for="(owner) in key.owners" icon="account circle" small color="teal">{{owner}}</q-chip>
+                  <q-chip v-for="(tag) in key.tags" icon="bookmark" small color="tertiary">{{tag}}</q-chip>
+                </q-toolbar-title>
+              </q-toolbar>
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='thingslist'">
+            <q-card-title>
+              My things
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-toolbar v-for="(thing,index) in tab.list" color="primary" inverted>
+                <q-btn flat round dense icon="create" @click.native="search('thing:'+thing.thing,tab);"></q-btn>
+                <q-toolbar-title>
+                  /thing/{{thing.thing}}
+                  <span slot="subtitle">{{thing.description}}</span>
+                  <q-chip v-for="(owner) in thing.owners" icon="account circle" small color="teal">{{owner}}</q-chip>
+                  <q-chip v-for="(tag) in thing.tags" icon="bookmark" small color="tertiary">{{tag}}</q-chip>
+                </q-toolbar-title>
+              </q-toolbar>
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='info'">
+            <q-card-title>
+              System info
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              IoTB-Version: {{tab.info.brokerversion}}<br/>
+              System administrator: {{tab.info.systemadministrator}}<br/>
+              Total users: {{tab.info.usercount}}<br/>
+              Total things: {{tab.info.thingcount}}<br/>
+              Total keys: {{tab.info.keycount}}<br/>
+              Total websites: {{tab.info.websitecount}}<br/>
+              Total thing-script calls action=="http": {{tab.info.statistics.totalcalls.http}}<br/>
+              Total thing-script calls action=="init": {{tab.info.statistics.totalcalls.init}}<br/>
+              Total thing-script calls action=="thing": {{tab.info.statistics.totalcalls.thing}}<br/>
+              Total thing-script calls action=="tick": {{tab.info.statistics.totalcalls.tick}}
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='thing'">
+            <q-card-title>
+              <span>/thing/{{tab.thing}}</span>
+              <span v-if="tab.contentmodified===true"> *modified</span>
+              <q-btn round flat icon="more_vert" slot="right">
+                <q-popover>
+                  <q-list link style="min-width: 100px">
+                    <q-item v-close-overlay @click.native="search('ramvars:'+tab.thing,tab,'above');" >
+                      <q-item-main label="RAM-Vars"></q-item-main>
+                    </q-item>
+                    <q-item v-close-overlay @click.native="search('dbvars:'+tab.thing,tab,'above');" >
+                      <q-item-main label="DB-Vars"></q-item-main>
+                    </q-item>
+                  </q-list>
+                </q-popover>
+              </q-btn>
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+              <span slot="subtitle">Edit the thing here.</span>
+            </q-card-title>
+            <q-card-main>
+
+              <q-list>
+                <q-item multiline>
+                  <q-item-side icon="checkbox"></q-item-side>
+                  <q-item-main>
+                    <q-toggle v-model="tab.enabled" color="secondary" label="Thing enabled" />
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="description"></q-item-side>
+                  <q-item-main>
+                    <q-input v-model="tab.description" stack-label="Description"></q-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="account circle"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Owners" v-model="tab.owners" class="no-margin" placeholder="Type user names">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="bookmark"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Tags" v-model="tab.tags" class="no-margin" placeholder="Type tag names">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <!--<q-item-side icon="code">
+                    <q-tooltip>Total script runtime: {{tab.profiling.scriptruntime}}ms<br/>Time consumption: {{tab.profiling.load}}%</q-tooltip>
+                  </q-item-side>
+                  -->
+                  <q-item-main>
+                    <vue-ace-editor v-model="tab.source" v-on:ctrl-shift-s="saveall();" v-on:ctrl-s="save(tab,index);" v-on:input="tab.contentmodified=true;" v-bind:options="exsampleoptions" >
+                      </vue-ace-editor>
+                  </q-item-main>
+                </q-item>
+              </q-list>
+            </q-card-main>
+            <q-card-actions>
+              <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
+              <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>
+            </q-card-actions>
+          </q-card>
+
+
+          <q-card v-if="tab.type=='varlist'">
+            <q-card-title>
+              <span>/thing/{{tab.thing}}/{{tab.memtype}}</span>
+              <q-btn round flat icon="refresh" slot="right"  @click.native="search(tab.memtype+'vars:'+tab.thing,tab);">
+              </q-btn>
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-toolbar v-for="(item,index) in tab.varlist" color="primary" inverted>
+                <q-btn flat round dense icon="create" @click.native="search('var:'+tab.thing+'/'+tab.memtype+'/'+item.name,tab,'above');"></q-btn>
+                <q-toolbar-title>
+                  {{item.name}} ({{item.jsonsize}} bytes)
+                  <span slot="subtitle">{{item.jsonpreview}}</span>
+                </q-toolbar-title>
+              </q-toolbar>
+            </q-card-main>
+          </q-card>
+
+          <q-card v-if="tab.type=='var'">
+            <q-card-title>
+              <span>/thing/{{tab.thing}}/{{tab.memtype}}/{{tab.varname}}</span>
+              <q-btn round flat icon="refresh" slot="right"  @click.native="search('var:'+tab.thing+'/'+tab.memtype+'/'+tab.varname,tab);">
+                </q-btn>  
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-item v-if="tab.memtype=='db'">
+                Disable thing before modifying this variable, otherwise the script will ignore the modification and overwrites the content.
+              </q-item>
+              <q-item multiline>
+                <q-item-main>
+                  <vue-ace-editor v-on:ctrl-shift-s="" v-on:ctrl-s="" v-on:input="" v-model="tab.value" v-bind:options="jsonoptions">
+                    </vue-ace-editor>
+                </q-item-main>
+              </q-item>
+            </q-card-main>
+            <q-card-actions>
+              <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
+              <q-btn flat icon="delete">Delete
+                <q-popover>
+                  <q-list link style="min-width: 100px">
+                    <q-item v-close-overlay @click.native="del(tab);close(tab,index);" >
+                      <q-item-main label="Yes, delete this variable!"></q-item-main>
+                    </q-item>
+                  </q-list>
+                </q-popover>
+              </q-btn>    
+              <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>
+            </q-card-actions>
+          </q-card>
+
+          <q-card v-if="tab.type=='websitedirectory'">
+            <q-card-title>
+              <span>/website/{{tab.website}}{{tab.filepath}}</span>
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+              <q-list>
+                <q-item v-if="tab.parentdirectory!=''">
+                  <q-item-side icon="folder"></q-item-side>
+                  <q-btn flat round dense icon="arrow_back" @click.native="search('file:'+tab.website+tab.parentdirectory,tab);"></q-btn>
+                  <q-item-main>
+                    ../
+                  </q-item-main>
+                </q-item>
+                <q-item v-for="folder in tab.directories">
+                  <q-item-side icon="folder"></q-item-side>
+                  <q-btn flat round dense icon="arrow_forward" @click.native="search('file:'+tab.website+tab.filepath+folder.name+'/',tab);"></q-btn>
+                  <q-item-main>
+                    {{folder.name}}
+                  </q-item-main>
+                </q-item>
+                <q-item v-for="file in tab.files">
+                  <q-item-side icon="description"></q-item-side>
+                  <q-btn flat round dense icon="create" @click.native="search('file:'+tab.website+tab.filepath+file.name,tab,'above');"></q-btn>
+                  <q-item-main>
+                    {{file.name}}
+                  </q-item-main>
+                </q-item>
+              </q-list>
+              <q-btn flat round dense icon="add" @click.native=""></q-btn>
+              <q-uploader
+                :name="'fileToUpload'"
+                :url="tab.uploadurl"
+                :after="[
+                  {
+                    icon: 'warning',
+                    handler () {
+
+                    }
+                  }
+                ]"
+
+                @uploaded="fileUploadOK"
+                @fail="fileUploadError"
+             >
+             </q-uploaader>
+            </q-card-main>
+            <q-card-actions>
+              <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>
+            </q-card-actions>
+            <q-card-separator />
+          </q-card>
+
+          <q-card v-if="tab.type=='websitefile'">
+            <q-card-title>
+              <span>/{{tab.website}}{{tab.filepath}}</span>
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+            </q-card-title>
+            <q-card-main>
+
+              <q-list>
+                <q-item multiline>
+                  <!--<q-item-side icon="code"></q-item-side>-->
+                  <q-item-main>
+                    <vue-ace-editor v-on:ctrl-shift-s="saveall();" v-on:ctrl-s="save(tab,index);" v-on:input="tab.contentmodified=true;" v-model="tab.content" v-bind:options="vueoptions[tab.extension]" >
+                      </vue-ace-editor>
+                  </q-item-main>
+                </q-item>
+              </q-list>
+            </q-card-main>
+            <q-card-actions>
+              <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
+              <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>
+            </q-card-actions>
+            <q-card-separator />
+          </q-card>
+
+          <q-card v-if="tab.type=='website'">
+            <q-card-title>
+              /website/{{tab.website}}
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+              <span slot="subtitle">Edit the website here.</span>
+            </q-card-title>
+            <q-card-main>
+              <q-list>
+                <q-item multiline>
+                  <q-item-side icon="checkbox"></q-item-side>
+                  <q-item-main>
+                    <q-toggle v-model="tab.enabled" color="secondary" label="Website enabled" />
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="description"></q-item-side>
+                  <q-item-main>
+                    <q-input v-model="tab.description" stack-label="Description"></q-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="account circle"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Owners" v-model="tab.owners" class="no-margin" placeholder="Type user names">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="bookmark"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Tags" v-model="tab.tags" class="no-margin" placeholder="Type tag names">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-uploader
+                    :name="'fileToUpload'"
+                    :url="tab.uploadurl"
+                    :after="[
+                      {
+                        icon: 'warning',
+                        handler () {
+
+                        }
+                      }
+                    ]"
+
+                    @uploaded="fileUploadOK"
+                    @fail="fileUploadError"
+                 >
+                 </q-uploaader>
+               </q-item>
+               <q-item multiline>
+                 <q-btn flat @click.native="search('file:'+tab.website+'/',tab,'above');">Show files</q-btn>
+               </q-item>
+              </q-list>
+            </q-card-main>
+            <q-card-actions>
+              <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
+              <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>
+            </q-card-actions>
+            <q-card-separator />
+          </q-card>
+
+          <q-card v-if="tab.type=='key'">
+            <q-card-title>
+              /key/{{tab.key}}
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+              <span slot="subtitle">Edit the key here.</span>
+            </q-card-title>
+            <q-card-main>
+              <q-list>
+                <q-item multiline>
+                  <q-item-side icon="checkbox"></q-item-side>
+                  <q-item-main>
+                    <q-toggle v-model="tab.enabled" color="secondary" label="Key enabled" />
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="description"></q-item-side>
+                  <q-item-main>
+                    <q-input v-model="tab.description" stack-label="Description"></q-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="account circle"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Owners" v-model="tab.owners" class="no-margin" placeholder="Type user names">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="bookmark"></q-item-side>
+                  <q-item-main>
+                    <q-chips-input stack-label="Tags" v-model="tab.tags" class="no-margin" placeholder="Type tag names">
+                    </q-chips-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="vpn key"></q-item-side>
+                  <q-item-main>
+                    <q-input v-model="tab.token" stack-label="Token"></q-input>
+                    <q-btn flat @click.native="createnewtoken(tab);">Create new token</q-btn>
+                  </q-item-main>
+                </q-item>
+              </q-list>
+            </q-card-main>
+            <q-card-actions>
+              <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
+              <q-btn icon="close" flat @click.native="close(tab,index);">Close</q-btn>
+            </q-card-actions>
+            <q-card-separator />
+          </q-card>
+
+          <q-card v-if="tab.type=='user'">
+            <q-card-title>
+              /user/{{tab.user}}
+              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              </q-btn>
+              <span slot="subtitle">Edit the user settings here!</span>
+            </q-card-title>
+            <q-card-main>
+
+              <q-list>
+                <q-item multiline>
+                  <q-item-side icon="supervisor account"></q-item-side>
+                  <q-item-main>
+                    <q-toggle v-model="tab.admin" color="secondary" label="User is administrator">
+                    </q-toggle>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="checkbox"></q-item-side>
+                  <q-item-main>
+                    <q-toggle v-model="tab.enabled" color="secondary" label="User enabled">
+                    </q-toggle>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="account circle"></q-item-side>
+                  <q-item-main>
+                    <q-input v-model="tab.username" stack-label="Username"></q-input>
+                  </q-item-main>
+                </q-item>
+                <q-item multiline>
+                  <q-item-side icon="email"></q-item-side>
+                  <q-item-main>
+                    <q-input v-model="tab.email" stack-label="e-Mail"></q-input>
+                  </q-item-main>
+                </q-item>
+                <q-btn flat @click.native="changeUserSettings(tab);">Modify user settings</q-btn>
+                <q-card-separator></q-card-separator>
+                <q-item multiline>
+                  <q-item-side icon="vpn key"></q-item-side>
+                  <q-item-main>
+                    <q-input type="password" v-model="tab.oldpassword" stack-label="Old password"></q-input>
+                    <q-input type="password" v-model="tab.newpassword1" stack-label="New password"></q-input>
+                    <q-input type="password" v-model="tab.newpassword2" stack-label="Repeat new password"></q-input>
+                  </q-item-main>
+                </q-item>
+                <q-btn flat @click.native="changeUserPassword(tab);">Modify password</q-btn>
+              </q-list>
+            </q-card-main>
+            <q-card-separator />
+          </q-card>
+
+        </div>
+
+      </div>
+      </q-page>
+    </q-page-container>
+
+  </q-layout>
+
+</div>
+
+</body>
+
+</html>
