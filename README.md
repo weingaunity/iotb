@@ -41,6 +41,7 @@ Setup a new IoT-Broker with following steps:
 
 - within the directory `./iotbroker` there is now the `server.js` with following content and change the settings marked with `//edit`.
 
+```javascript
       var iotb = require('iotb');
       var webpushkeys=require('./webpushkeys.json');
 
@@ -93,6 +94,7 @@ Setup a new IoT-Broker with following steps:
       }).catch((e)=>{
         console.log("Error loading IoT Broker");
       });
+```
 
 ## Run
 
@@ -131,6 +133,7 @@ Type in the top commandline of the web-interface following command:
 
 The following default config script
 
+```javascript
     if (action=="broker")
     {
       // sortcut urls
@@ -158,3 +161,5 @@ The following default config script
         };
       }
     }
+  ```
+    
