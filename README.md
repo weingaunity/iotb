@@ -11,6 +11,9 @@ Setup a new IoT-Broker with following steps:
 
 - sqlite3 is required
 
+      sudo apt-get install libsqlite3-dev
+      apt-get install sqlite3
+
 - create a new directory e.g. `./iotbroker`
 
       mkdir iotbroker
