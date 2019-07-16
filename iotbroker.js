@@ -1788,7 +1788,7 @@ var iotb = function(brokersettings)
 
   app.get('/doc/:topic', function (req, res, next) {
     var docname=path.join("doc/",req.params.topic+".md");
-    var filename = path.join(process.cwd(), docname);
+    var filename = path.join(__dirname, docname);
     fs.readFile(filename, "binary", function(err, file) {
       if(err)
       {
