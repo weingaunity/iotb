@@ -2,14 +2,18 @@
 ### !!! Do not use varname, method and result any more !!!
 Instead use _name_, _action_, _res_
 
-## work
+## 20191028
   * Fixed: error when passing value to __callThing__
-  * todo: __toBase64__, __fromBase64__
   * New: Functions: __toJson__, __fromJson__,  __getBrokerStatistics__, __toUpperCase__, __toLowerCase__, __isAdmin__, __isUser__
+  * Todo: __toBase64__, __fromBase64__
   * Modification: thing brokersettings can be used to configure favorite page and short links
   * New: API to get thing owner to contact them /query/thing/:thingname/owners
   * valueraw, value only available, if valid json
-  * fix replaceString
+  * Fixed: replaceString
+  * Changed: length method returns number of object properties
+  * Changed: ramVar default behaviour changed. The default value is stored now directly to the variable at the first time.
+  * Changed: httpRequest() request-body can be added now with jsonbody or body at the options.
+  * Added: Two examples added to scripting-examples
   
 
 Missing: Objekte kopieren mit default Abbild und Range Checker usw...

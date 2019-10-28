@@ -288,6 +288,10 @@ var thingscript = function()
           {
             res=s.length;
           }
+          else if (typeof s==="object")
+          {
+            res=Object.keys(s).length;
+          }
         }
         return res;
       },

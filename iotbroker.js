@@ -1182,7 +1182,27 @@ var iotb = function(brokersettings)
           var options={
             method:method,
           };
-
+          if (props.hasOwnProperty("jsonbody"))
+          {
+            var jsonbody=props["jsonbody"];
+            try{
+              options.body=JSON.stringify(jsonbody);
+              options.headers={
+                'Content-Type': 'application/json'
+              };
+            }
+            catch(e)
+            {
+            }
+          }
+          else if (props.hasOwnProperty("body"))
+          {
+            options.body=props["body"];
+          }
+          if (props.hasOwnProperty("headers"))
+          {
+            options.headers=props.headers;
+          }
           if (props.hasOwnProperty("query"))
           {
             Object.keys(props.query).forEach(key => url.searchParams.append(key, props.query[key]));
@@ -1204,7 +1224,12 @@ var iotb = function(brokersettings)
               {
               }
               newthing.events.push(event);
+              if (newthing.events.length>10)
+              {
+                newthing.events.shift();
+              }
             }
+          }).catch(function(error){
           });
         }
         // "GET","https://iotdev.htlwy.ac.at",{eventid:"asdf", query:{a:12,b:323}, data:"asdfadfqwer"}
@@ -1225,14 +1250,25 @@ var iotb = function(brokersettings)
 
       scriptoptions.functions.ramVar=function(context, args)
       {
+        if (args.length==1 || args.length==2)
+        {
+          if (!newthing.ramvars.hasOwnProperty(args[0]()))
+          {
+            var defaultvalue=0;
+            if (args.length==2 && typeof(args[1])==="function") defaultvalue=args[1]();
+            newthing.ramvars[args[0]()]=defaultvalue;
+          }
+        }
         var obj={
           get value()
           {
-            var defaultvalue=0;
             if (args.length==1 || args.length==2)
             {
-              if (args.length==2 && typeof(args[1])==="function") defaultvalue=args[1]();
-              return newthing.ramvars.hasOwnProperty(args[0]())?newthing.ramvars[args[0]()] : defaultvalue;
+              return newthing.ramvars[args[0]()];
+            }
+            else
+            {
+              return 0;
             }
           },
           set value(val)

@@ -143,7 +143,7 @@ __fromJson__(_jsonstring_) | converts the passed json-string into an object
 
 Function | Description
 ---------- | -------------
-__length__(_string/array_) | Returns the length of a string or an array
+__length__(_string/array_) | Returns the length of a string, an array or the number of object properties
 __sliceString__(_string_,_n_) | When _n_>0 the function extracts the first _n_ characters of the _string_. When _n_<0 the function extracts the last _n_ characters of the _string_.
 __subString__(_string_,_start_,_length_) | ...
 __subStringBefore__(_string_,_splitstring_) | ...

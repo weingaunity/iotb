@@ -118,3 +118,75 @@ else if (action=="http")
   if (name=="date")          res=now("%YYYY.%MM.%DD");
 }
 ```
+
+## Save and load from Database
+``` javascript
+// here a simple counter thing
+counters=ramVar("counters",{asd:2123});
+
+if (method=="init")
+{
+  // during init the db variable
+  // contains the complete database variables
+  // all database variables are loaded into the ram
+  if (defined(db.counters))
+  {
+    counters=db.counters;
+  }
+}
+
+if (action=="http")
+{
+  if (defined(value))
+  {
+    if (name=="count")
+    {
+      if (!defined(counters[value])) counters[value]=0;
+      counters[value]=counters[value]+1;
+      // write the changed ram variable back to the database
+      writeDB("counters",counters);
+    }
+    if (name=="get")
+    {
+      res=-1;
+      if (defined(counters[value])) res=counters[value];
+    }
+  }
+}
+```
+
+## Make HTTP-Requests
+``` javascript
+ram=ramVar("ram",{});
+
+foreach(e in events)
+{
+  if (e.id=="init")
+  {
+    ram.debug=e.json;
+    ram.debug2=e.body;
+  }
+}
+
+if (action=="init")
+{
+  ram={counter:0};
+  // make a http POST Request
+  // each response is stored as event within the events-array
+  // next time, when the thing was triggered (tick, http, thing)
+  // check the events array with a foreach (see at the top)
+  // eventid can be an object too
+  httpRequest("POST","https://webhook.site/.....",{
+    jsonbody:{counter:321,ab:"asdfdef",c:[1,2,3]},
+    query:{a:123,b:"asdf",c:toJson({g:213,ewr:[1,2,3]})},
+    eventid:"init"
+  });
+  timeout=0.1;
+}
+
+if (action=="tick")
+{
+  ram.counter=ram.counter+1;
+  timeout=1;
+}
+```
