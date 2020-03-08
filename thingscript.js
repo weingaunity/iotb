@@ -570,6 +570,53 @@ FromBase64 = function (str) {
         return unix;
       },
 
+      unixtime2string:function(context, args)
+      {
+        var res="";
+        if (args.length==2)
+        {
+          var unix=args[0]();
+          var timestamp=new Date(unix);
+          var year="00000000"+timestamp.getFullYear();
+          var month="00000000"+(timestamp.getMonth()+1);
+          var day="00000000"+timestamp.getDate();
+
+          var weekday=timestamp.getDay();
+          if (weekday==0) weekday=7;
+
+          var hours="00000000"+timestamp.getHours();
+          var minutes="00000000"+timestamp.getMinutes();
+          var seconds="00000000"+timestamp.getSeconds();
+          var milliseconds="00000000"+timestamp.getMilliseconds();
+
+          var timeInMinutes=hours*60+Number(minutes);
+          var timeInSeconds=timeInMinutes*60+Number(seconds);
+          var timeInMilliseconds=timeInSeconds*1000+Number(milliseconds);
+
+          var isoTimeStamp=timestamp.toISOString();
+
+          res=args[1]();
+          res=res.replace("%unixtime",unix);
+          res=res.replace("%YYYY",year.slice(-4));
+          res=res.replace("%WD",weekday);
+          res=res.replace("%MM",month.slice(-2));
+          res=res.replace("%DD",day.slice(-2));
+          res=res.replace("%hh",hours.slice(-2));
+          res=res.replace("%mm",minutes.slice(-2));
+          res=res.replace("%ss",seconds.slice(-2));
+          res=res.replace("%ms",milliseconds.slice(-3));
+          res=res.replace("%time_min",timeInMinutes);
+          res=res.replace("%time_sec",timeInSeconds);
+          res=res.replace("%time_ms",timeInMilliseconds);
+          res=res.replace("%iso",isoTimeStamp);
+        }
+        else
+        {
+          res=isoTimeStamp;
+        }
+        return res;
+      },
+
       now:function(context, args)
       {
         var unix=Date.now();
