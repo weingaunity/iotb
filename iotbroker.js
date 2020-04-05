@@ -261,9 +261,11 @@ var iotb = function(brokersettings)
   });
 
   const dbThingDbVars = sequelize.define('thingdbvars', {
-    thing:   { type: Sequelize.TEXT, primaryKey: true, unique: true },
+    thing:   { type: Sequelize.TEXT, primaryKey: true },
     varname: { type: Sequelize.TEXT, primaryKey: true },
     value: { type: Sequelize.TEXT} // JSON formated value
+  },{
+    uniqueKeys: {files_unique: {fields:['thing','varname']}}
   });
 
   const dbWebSites = sequelize.define('website',{
