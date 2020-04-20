@@ -1652,7 +1652,22 @@ var iotb = function(brokersettings)
       if (options.hasOwnProperty('valueraw')) context.scriptvars.valueraw=options.valueraw;
       if (options.hasOwnProperty('sessionuser')) context.scriptvars.sessionuser=options.sessionuser;
 
-      if (options.hasOwnProperty('keytoken')) context.request.keytoken=options.keytoken;
+      if (options.hasOwnProperty('keytoken')) {
+        var keytoken=options.keytoken;
+        context.request.keytoken=keytoken;
+        var index=keytoken.indexOf(':');
+        if(index>0)
+        {
+          var keyname=keytoken.substr(0,index);
+          if (keys[keyname].enabled==true) 
+          {
+            if (keytoken==keyname+":"+keys[keyname].token)
+            {
+              context.scriptvars.keyname=keyname;
+            }
+          }
+        }
+      }
       if (options.hasOwnProperty('clientipaddr')) context.scriptvars.clientipaddr=options.clientipaddr;
       if (options.hasOwnProperty('db')) context.scriptvars.db=options.db;
 
