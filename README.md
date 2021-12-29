@@ -32,7 +32,7 @@ Setup a new IoT-Broker with following steps:
 
 - For web-pushnotifications a public and private key have to be generated with the command line tool [web-push](https://www.npmjs.com/package/web-push).
 
-      duso npm install -g web-push
+      sudo npm install -g web-push
       web-push generate-vapid-keys --json > webpushkeys.json
 
 - copy the `servertemplate.js` to the local directory
