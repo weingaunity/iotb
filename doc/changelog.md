@@ -2,10 +2,35 @@
 ### !!! Do not use varname, method and result any more !!!
 Instead use _name_, _action_, _res_
 
+## work
+ * Issue: fetch canceled no resource with given identifier found
+ * Todo: formating unixtime number
+ * Todo: Admin features: get user list, thing statistics (calls, ram and db requirements, bandwidth)
+ * Todo: http description and examples
+ * Todo: more examples
+ * Idea: 2 stage requests (e.g. db requests)
+ * Todo: deinit event
+ * Todo: FNN Layer + Activation Functions
+
+## 20231030
+ * New: Admin could login as other user with admin password. Username: adminname/username  Password: adminpassword
+ * New: __toBase64__, __fromBase64__
+
+## 20230516
+ * Fixed: Unique-Key Issue at DB-Variables
+ * New: Variable keyname now passed, if API-key was used
+ * Cookies from HTTP Response
+ * New: action "broker" for brokersettings call
+ * New: admin can login as other user with following login entry: username:"adminname/username" and pwd:"adminpassword"
+
+
+## 20220807
+ * New functions: __meanFromArray__, __medianFromArray__, __maxFromArray__, __minFromArray__
+ * New constants: __null__, __NaN__
+
 ## 20191028
   * Fixed: error when passing value to __callThing__
   * New: Functions: __toJson__, __fromJson__,  __getBrokerStatistics__, __toUpperCase__, __toLowerCase__, __isAdmin__, __isUser__
-  * Todo: __toBase64__, __fromBase64__
   * Modification: thing brokersettings can be used to configure favorite page and short links
   * New: API to get thing owner to contact them /query/thing/:thingname/owners
   * valueraw, value only available, if valid json

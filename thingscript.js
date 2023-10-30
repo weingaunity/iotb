@@ -318,7 +318,6 @@ var thingscript = function()
         else return 0.0;
       },
 
-
       sliceString: function(context,args)
       {
         if (args.length==2)
@@ -502,8 +501,9 @@ FromBase64 = function (str) {
         if(args.length==1)
         {
           try{
-            return "";
-            //return btoa(String.fromCharCode.apply(null, new Uint8Array(args[0]())));
+            //return "";
+            var buff=Buffer.from(new Uint8Array(args[0]()));
+            return buff.toString("base64");
           }
           catch(e)
           {
@@ -519,8 +519,10 @@ FromBase64 = function (str) {
         if(args.length==1)
         {
           try{
-            return [];
-            //return atob(args[0]()).split('').map(function (c) { return c.charCodeAt(0); });
+            //return [];
+            var buff=Buffer.from(args[0](),"base64");
+            
+            return atob(args[0]()).split('').map(function (c) { return c.charCodeAt(0); });
           }
           catch(e)
           {
@@ -680,6 +682,7 @@ FromBase64 = function (str) {
         }
         return false;
       },
+
       pushArray: function(context, args)
       {
         if (args.length==2)
@@ -787,6 +790,86 @@ FromBase64 = function (str) {
         return res;
       },
 
+      meanFromArray:function(context, args)
+      {
+        var sum=NaN;
+        if (args.length==1)
+        {
+          var arr=args[0]();
+          var l=arr.length;
+          if (l>0)
+          {
+            sum=0;
+            for(var i=0;i<arr.length;i++)
+            {
+              sum+=Number(arr[i]);
+            }
+            sum/=arr.length;
+          }
+        }
+        return sum;
+      },
+
+      medianFromArray:function(context, args)
+      {
+        var res=NaN;
+        if (args.length==1)
+        {
+          var arr=args[0]().map(x=>Number(x));
+          arr.sort((a,b)=>a-b);
+          var l=arr.length;
+          if (l>0)
+          {
+            if (l%2==0)
+            {
+              var idx=Math.floor(l/2);
+              res=(arr[idx]+arr[idx-1])/2;
+            }
+            else
+            {
+              res=arr[Math.floor(l/2)];
+            }
+          }          
+        }
+        return res;
+      },
+
+      maxFromArray:function()
+      {
+        var res=NaN;
+        if (args.length==1)
+        {
+          var arr=args[0]();
+          if (Array.isArray(arr))
+          {
+            res=arr[0];
+            for(var i=1;i<arr.length;i++)
+            {
+              if (arr[i]>res) res=arr[i];
+            }
+          }
+        }
+        return res;
+      },
+
+      minFromArray:function()
+      {
+        var res=NaN;
+        if (args.length==1)
+        {
+          var arr=args[0]();
+          if (Array.isArray(arr))
+          {
+            res=arr[0];
+            for(var i=1;i<arr.length;i++)
+            {
+              if (arr[i]<res) res=arr[i];
+            }
+          }
+        }
+        return res;
+      }
+      
 
     };
 
@@ -826,7 +909,7 @@ FromBase64 = function (str) {
     }
 
     var isGetter=function(obj, prop) {
-      return obj.hasOwnProperty(prop) && (!!Object.getOwnPropertyDescriptor(obj, prop)['get']);
+      return (obj!=null) && obj.hasOwnProperty(prop) && (!!Object.getOwnPropertyDescriptor(obj, prop)['get']);
     }
 
     var isSpace = function(aChar)
@@ -1229,6 +1312,8 @@ FromBase64 = function (str) {
           {
             if (varname=="true") return function(){return true;}
             if (varname=="false") return function(){return false;}
+            if (varname=="null") return function(){return null;}
+            if (varname=="NaN") return function(){return NaN;}
             return function()
             {
               // fix here for objects
@@ -1242,9 +1327,8 @@ FromBase64 = function (str) {
               }
             };
           }
-          else if(typeof varname==="object" && varname!=null)
+          else if(typeof varname==="object" && varname!=null) // then it is a list of properties x.y.z ["x","y","z"]
           {
-            
             return function()
             {
               var v=context.scriptvars;

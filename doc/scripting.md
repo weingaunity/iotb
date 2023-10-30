@@ -19,7 +19,7 @@ Each thing has it's own script. The script is executed with following triggers:
 
 ```
 thingname      = < name of the current thing >
-action         = < "http" | "init" | "tick" | "thing" >
+action         = < "http" | "init" | "tick" | "thing" | "broker">
 name           = < name passed by http request or call by thing >
 value          = < value passed to the variable >
 from           = < caller thingname when caller is a thing >
@@ -73,9 +73,11 @@ foreach(propname in object) {
 Datatype | Description
 ---------- | -------------
 true, false | Values for boolean variables.
-"hello"|A string
-'"hello"'|A string that contains double quotes
-"'hello'"|A string that contains single quotes
+"hello" | A string
+'"hello"' | A string that contains double quotes
+"'hello'" | A string that contains single quotes
+null | null value
+NaN | not a number
 123, 1.234, 1.12e4, 1.23e-3 | A floating point and integer numbers
 {x:1, y:[1,2,3]} or {x:1,y:2,} | An object with an array for a property.
 [1,2,3,"assd"] or [1,2,3,] | An array with mixed typed elements.
@@ -162,6 +164,8 @@ __insertArrayAt__(_array_,_index_,_element_) | Inserts an element at the given i
 __replaceArrayAt__(_array_,_index_,_element_) | Replace an element at the given index. Index -2 selects the last element, -3 the element befor the last element, ... . The old element  is returned.
 __removeArrayAt__(_array_,_index_) | Remove an element at the given index. Index -2 selects the last element, -3 the element befor the last element, ... . The removed element is returned.
 __removeFromArray__(_array_,_object_) | Removes the _object_ instance from _array_ if exists and returns true if found and removed. Otherwise false.
+__toBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
+__fromBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
 
 ## Script Functions - Math
 
@@ -198,6 +202,14 @@ __tan__(_x_) | ...
 __tanh__(_x_) | ...
 __trunc__(_x_) | ...
 
+## Script Functions - Filters, Signalprocessing
+
+Function | Description
+---------- | -------------
+__meanFromArray__(_array_) | ...
+__medianFromArray__(_array_) | ...
+__maxFromArray__(_array_) | ...
+__minFromArray__(_array_) | ...
 
 ## Script Functions - Date and Time
 

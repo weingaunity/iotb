@@ -588,6 +588,7 @@ var iotb = function(brokersettings)
 
   var checkUserLogin=function(user, password)
   {
+    
     if (users[user] && users[user].enabled===true && users[user].password===password) return true;
     return false;
   }
@@ -1209,16 +1210,25 @@ var iotb = function(brokersettings)
           {
             Object.keys(props.query).forEach(key => url.searchParams.append(key, props.query[key]));
           }
+//          console.log("HTTP Request");
+//          console.log(url);
+          var event={};
           fetch(url,options)
-          .then(res => res.text())
+          .then(res => {
+            event.headers={};
+//            console.log(res.headers.raw());
+            res.headers.forEach(function(val,key){
+//              console.log(key+": "+value);
+              event.headers[key]=val;
+            });
+            return res.text();
+          })
           .then(body => {
             if (props.hasOwnProperty("eventid"))
             {
-              var event={
-                id:props.eventid,
-                body:body,
-                unixtime:Date.now()
-              }
+              event.id=props.eventid;
+              event.body=body;
+              event.unixtime=Date.now();
               try{
                 event.json=JSON.parse(body);
               }
@@ -1811,16 +1821,34 @@ var iotb = function(brokersettings)
   app.get('/login', function (req, res) {
     if (!req.query.user || !req.query.password) {
       res.send('login failed');
-    } else if(checkUserLogin(req.query.user, req.query.password)) {
-      req.session.user = req.query.user;
-      req.session.password = req.query.password;
-      res.redirect(req.query.redirect || "/");
     } else {
-      if (req.query.redirect)
+      var _users=req.query.user.split("/");
+      var _usr="";
+      var _pwd="";
+      if (_users.length==2)
       {
-        res.redirect(req.query.redirect);
+        if (checkUserLogin(_users[0],req.query.password) && (users[_users[0]].admin===true))
+        {
+          _usr=_users[1];
+          _pwd=users[_usr].password;
+        }
       }
-      else res.send('login failed');
+      if ((_users.length==1) && checkUserLogin(req.query.user, req.query.password)) {
+        req.session.user = req.query.user;
+        req.session.password = req.query.password;
+        res.redirect(req.query.redirect || "/");
+      }
+      else if ((_users.length==2) && checkUserLogin(_usr, _pwd)) {
+        req.session.user = _usr;
+        req.session.password = _pwd;
+        res.redirect(req.query.redirect || "/");
+      } else {
+        if (req.query.redirect)
+        {
+          res.redirect(req.query.redirect);
+        }
+        else res.send('login failed');
+      }
     }
   });
 

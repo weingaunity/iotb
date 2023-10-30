@@ -2,6 +2,7 @@ var thingscriptcompiler=require('./thingscript.js');
 
 var scriptfunctions={
   print: function(ctx, args) {
+    ctx.console+=args[0]()+"\n";
     if (ctx.run==0) console.log(args[0]());
     return 0;
   },
@@ -201,11 +202,25 @@ program+="if (removeFromArray(array2,array_obj2)==true) print('PASSED'); else pr
 program+="jsonobj1={a:1,b:'asd'};jsonstr=toJson(jsonobj1);jsonobj2=fromJson(jsonstr);\n";
 program+="if ((jsonobj2.a==1)&&(jsonobj2.b=='asd')) print('PASSED JSON'); else print('FAILED');\n";
 program+="b64array1=[4,5,6,7];b64str=toBase64(b64array1);b64array2=fromBase64(b64str1);\n";
+program+="print(b64array1);\n";
+program+="print(b64str);\n";
+program+="print(b64array2);\n";
 program+="objiterate={a:1,b:2,c:3};\n";
 program+="foreach(i in objiterate) print(i);\n";
 program+="print(unixtime());\n";
 program+="print((unixtime2string(1583691587135,'%YYYY%MM%DD-%hh:%mm')=='20200308-19:19')?'PASSED':'FAILED');\n";
 program+="print((unixtime2string(1583691587135+24*60*60*1000,'%YYYY%MM%DD-%hh:%mm')=='20200309-19:19')?'PASSED':'FAILED');\n";
+program+="print(meanFromArray([]));\n"
+program+="print(meanFromArray([1,'2',2,3,10.2]));\n"
+program+="print(medianFromArray([]));\n"
+program+="print(medianFromArray([1,'3',10,2,2]));\n"
+program+="print(medianFromArray([1,'2',2,3,10,10.2]));\n"
+program+="x=fromJson('{\"y\":null,\"z\":1}');\n";
+program+="print(x);\n";
+program+="print((x.y==null)?'PASSED':'FAILED');\n";
+program+="print((x.z!=null)?'PASSED':'FAILED');\n";
+program+="x.z=null;\n";
+program+="print((x.z==null)?'PASSED':'FAILED');\n";
 
 var fun=thingscriptcompiler.compile(program,scriptoptions);
 var perftest=function(count){
@@ -214,11 +229,19 @@ var perftest=function(count){
   console.log("##############################################");
   for(var i=count-1;i>=0;i--)
   {
-    var context={run:i};
+    var context={run:i,console:""};
     var ctx=fun(context);
     if (i==0)
     {
-      console.timeEnd("performance"); console.log("For "+count+" runs!"); console.log(ctx);
+      console.timeEnd("performance"); console.log("For "+count+" runs!"); // console.log(ctx);
+      if (context.console.includes("FAILED"))
+      {
+        console.log("Test FAILED!!!!!!!!!!!");
+      }
+      else
+      {
+        console.log("Test PASSED!!!!!!!!!!!");
+      }
     }
   }
 };
