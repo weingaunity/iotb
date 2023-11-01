@@ -1497,11 +1497,21 @@ var iotb = function(brokersettings)
       };
 
       newthing.scriptfunction=thingscriptcompiler.compile(newthing.source,scriptoptions);
-      newthing.profiling={scriptruntime:0,initunixtime: Date.now(), load:0};
+      newthing.profiling={scriptruntime:0, initunixtime: Date.now(), load:0};
       if (things[thingname] && things[thingname].timeoutID)
       {
         clearTimeout(things[thingname].timeoutID);
       }
+
+      /* not tested, still not clear if the "deinit" functionality is required
+      if (typeof things[thingname].scriptfunction==="function")
+      {
+        callThing({
+          thing: thingname,
+          method: "deinit"
+        });
+      }
+      */
 
 
       if (typeof newthing.scriptfunction === "function")
@@ -1712,7 +1722,7 @@ var iotb = function(brokersettings)
             },context.scriptvars.timeout*1000);
           }
         }
-        if (context.scriptvars.hasOwnProperty('result')) return context.scriptvars.result;
+        //obsolete if (context.scriptvars.hasOwnProperty('result')) return context.scriptvars.result;
         return context.scriptvars.res;
       }
       catch(e)
@@ -1747,6 +1757,17 @@ var iotb = function(brokersettings)
       return res.sendStatus(401);
   };
 
+  // Authentication and Authorization Middleware
+  var authenticateAdmin = function(req, res, next)
+  {
+    if (req.session && checkUserLogin(req.session.user, req.session.password) && users[req.session.user].admin===true)
+    {
+      return next();
+    }
+    else
+      return res.sendStatus(401);
+  };
+  
   // push notifications
   app.get("/publicsettings", (req, res) => {
     var obj={webpushpublickey:publicVapidKey};
@@ -1897,6 +1918,45 @@ var iotb = function(brokersettings)
     {
       return res.sendStatus(401);
     }
+  });
+
+  app.get('/query/admindashboard',authenticateAdmin, function(req,res,next) {
+    res.set({ 'content-type': 'application/json;charset=utf-8' });
+    var _thingslist={};
+    for(var thingname in things)
+    {
+      var t=things[thingname];
+      _thingslist[thingname]={
+        owners:t.owners,
+        ramvarssize_json:JSON.stringify(t.ramvars).length,
+        enabled:t.enabled
+      };
+    }
+    var _userslist={};
+    for(var user in users)
+    {
+      var u=users[user];
+      _userslist[user]={
+        admin:t.admin,
+        enabled:t.enabled
+      };
+    }
+
+    var _websiteslist={};
+    for(var website in websites)
+    {
+      var w=websites[website];
+      _websiteslist[website]={
+        enabled:w.enabled
+      };
+    }    
+
+    var data={
+      users:_userslist,
+      things:_thingslist,
+      websites:_websiteslist
+    };
+    res.send(JSON.stringify(data));
   });
 
   app.get('/query/info', function (req, res, next) {

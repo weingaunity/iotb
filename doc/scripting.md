@@ -16,18 +16,20 @@ Each thing has it's own script. The script is executed with following triggers:
 
 
 ## Input variables that are provided when the script starts
+Variablename |Description
+---------- | -------------
+thingname      | name of the current thing
+action         | "http", "init", "tick", "thing", "broker"
+name           | name passed by http request or thing call
+value          | value passed by the http request or thing call handled as JSON object
+valueraw       | raw request-body of the http POST-request
+from           | caller thingname when caller is a thing
+unixtime       | value with the current unix time in milliseconds
+sessionuser    | current logged in iotbroker user name (action=="http" only)
+clientipaddr   | ip address of the client, maybe a list of ip's in case of proxies (action=="http" only)
+db             | container with the thing database variables (action=="init" only)
+events         | array of events (see section Event Formats) collected since the last thing call. Would be deleted at the end of the thing call automatically
 
-```
-thingname      = < name of the current thing >
-action         = < "http" | "init" | "tick" | "thing" | "broker">
-name           = < name passed by http request or call by thing >
-value          = < value passed to the variable >
-from           = < caller thingname when caller is a thing >
-unixtime       = < value with the current unix time >
-sessionuser    = < current logged in iotbroker user name, http action only >
-clientipaddr   = < ip address of the client, maybe a list of ip's in case of proxies, http action only >
-db             = < container with the thing database variables. init action only! >
-```
 
 ## Output variables that are used after script ends
 
@@ -129,6 +131,8 @@ __defined__(_varname_) | check if variable with _varname_ is defined (exists) wi
 __isValue__() | Check if value is passed to the script. value is a scriptvariable too.
 __isKeyToken__() | Check if keytoken is passed via query. keytoken is not a scriptvariable.
 __usedKey__(_keyname_ or _arrayofkeynames_) | Checks if request uses a valid keytoken pair that match the passed _keyname_ or is within the _arrayofkeynames_ list.
+__httpRequest__(_method_, _url_, _props_) | Perform a http request. The response will be stored in the _events_ array (see events section). The _props_ parameter is an object with following optional properties for the request: _jsonbody_, _body_, _headers_, _query_, and _eventid_. _eventid_ is used to find the corresponding event in the events array. _eventid_ could be a string or a complex object.
+
 
 ## Script Functions - Data Conversion
 
@@ -236,3 +240,15 @@ now - Placeholder | Description
 %time_sec | The time elapsed this day in seconds
 %time_ms  | The time elapsed this day in milliseconds
 %iso     | Get iso coded timestamp "2018-04-09T05:54:09.241Z"
+
+## Event Formats
+### HTTP Response
+``` javascript
+{
+  id:..., // an object or string provided by the httpRequest call
+  headers:{....}, // content of the response header
+  body:"...", // string of the body of the response
+  unixtime:12354, // unixtime of the response
+  json:{} // JSON object of body, if body is valid JSON
+}
+```

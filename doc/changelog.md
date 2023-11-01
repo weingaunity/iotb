@@ -1,16 +1,19 @@
 # Change Log
-### !!! Do not use varname, method and result any more !!!
-Instead use _name_, _action_, _res_
 
 ## work
  * Issue: fetch canceled no resource with given identifier found
  * Todo: formating unixtime number
- * Todo: Admin features: get user list, thing statistics (calls, ram and db requirements, bandwidth)
+ * Todo: Improve admindashboard request: add thing statistics (calls, db requirements, average bandwidth)
  * Todo: http description and examples
  * Todo: more examples
  * Idea: 2 stage requests (e.g. db requests)
- * Todo: deinit event
+ * Todo: deinit event. Still not clear if this feature is required.
  * Todo: FNN Layer + Activation Functions
+
+ ## 20231101
+ * Updated: Documentation for events, httpRequest, additional standard variables
+ * New: /query/admindashboard users, things and websites overview for diagnostics and administration
+
 
 ## 20231030
  * New: Admin could login as other user with admin password. Username: adminname/username  Password: adminpassword
