@@ -37,6 +37,8 @@ var packagejson=require('./package.json');
 
 
 var express = require('express');
+ var expressWs = require('express-ws');
+//var expressWs = require('@wll8/express-ws');
 var session = require('express-session');
 var path=require('path');
 var AdmZip = require('adm-zip');
@@ -46,6 +48,7 @@ var multer  = require('multer');
 const webpush = require("web-push"); // DA
 const fetch = require('node-fetch');
 var URL=require("url").URL;
+var ws=require('ws');
 
 var iotb = function(brokersettings)
 {
@@ -290,7 +293,9 @@ var iotb = function(brokersettings)
   });
 
   var app = express();
-
+  var appws=expressWs(app);
+  var wss=appws.getWss();
+  
   webpush.setVapidDetails(
     "mailto: "+brokersettings.webpush.email,
     publicVapidKey,
@@ -504,7 +509,21 @@ var iotb = function(brokersettings)
     return true;
   }
 
+  var wgUID=function()
+  {
+    // see https://dev.to/rahmanfadhil/how-to-generate-unique-id-in-javascript-1b13
+    return Date.now().toString(32)+Math.random().toString(16);
+  }
+
   var iotscriptfunctions={
+
+    debugserver:function(context,args)
+    {
+      if (args.length==1)
+      {
+        // console.log(args[0]());
+      }
+    },
 
     isAdmin: function(context,args)
     {
@@ -577,6 +596,139 @@ var iotb = function(brokersettings)
         }
       }
       return false;
+    },
+
+    getWebSocketID:function(context,args)
+    {
+      var res="";
+      if (args.length==0)
+      {
+        if (context.locked.hasOwnProperty("ws") && context.locked.ws.hasOwnProperty("ctx") && context.locked.ws.ctx.hasOwnProperty("id"))
+        {
+          res=context.locked.ws.ctx.id;
+        }
+      }
+      return res;
+    },
+
+    getWebSocketIDs:function(context,args)
+    {
+      var res=[];
+      wss.clients.forEach((ws)=>{
+        if (ws.ctx.thingname==context.locked.thingname)
+        {
+          res.push(ws.ctx.id);
+        }
+      });
+      return res;
+    },
+
+    getWebSocketTags:function(context,args)
+    {
+      var res="";
+      if (args.length==0)
+      {
+        if (context.locked.hasOwnProperty("ws") && context.locked.ws.hasOwnProperty("ctx") && context.locked.ws.ctx.hasOwnProperty("tags"))
+        {
+          res=[];
+          for(var t of context.locked.ws.ctx.tags)
+          {
+            res.push(t);
+          }
+        }
+      }
+      return res;
+    },
+
+    setWebSocketTags:function(context,args)
+    {
+      if (args.length==1)
+      {
+        if (context.locked.hasOwnProperty("ws") && context.locked.ws.hasOwnProperty("ctx") && context.locked.ws.ctx.hasOwnProperty("tags"))
+        {
+          var val=args[0]();
+          context.locked.ws.ctx.tags=[];
+          
+          for(var t of val)
+          {
+            context.locked.ws.ctx.tags.push(t);
+          }
+          console.log(context.locked.ws.ctx.tags);
+        }
+      }
+    },
+
+    sendWebSocket:function(context,args)
+    {
+      if (args.length==1)
+      {
+        var val=args[0]();
+        wss.clients.forEach((ws)=>{
+          // Sicherheitsproblem gelöst: thingname könnte geändert werden in scriptvars, wurde darum auf locked geändert
+          if (ws.ctx.thingname==context.locked.thingname)
+          {
+            ws.send(JSON.stringify(val));
+          }
+        });
+      }
+      if (args.length==2)
+      {
+        var val=args[0]();
+        var destinations=args[1]();
+        wss.clients.forEach((ws)=>{
+          // Sicherheitsproblem gelöst: thingname könnte geändert werden in scriptvars, wurde darum auf locked geändert
+          if (ws.ctx.thingname==context.locked.thingname)
+          {
+            var send=false;
+            for(var dest of destinations)
+            {    
+              if (Array.isArray(dest))
+              {
+                var tags=dest;
+                var tagsmatch=true;
+                for(var t of tags)
+                {
+                  if (ws.ctx.tags.filter(s => (s===t)).length==0) {
+                    tagsmatch=false;
+                    break;
+                  }
+                }
+                if (tagsmatch==true) send=true;
+              }
+              else if (typeof dest=="string")
+              {
+                if (ws.ctx.id===dest) send=true;
+              }
+            }
+            if (send) ws.send(JSON.stringify(val));
+          }
+        });
+
+        for(var dest of destinations)
+        {
+          if (Array.isArray(dest))
+          {
+            var tags=dest;
+          } else if (typeof tags=="string")
+          {
+            wss.clients.forEach((ws)=>{
+              // Sicherheitsproblem gelöst: thingname könnte geändert werden in scriptvars, wurde darum auf locked geändert
+              if (ws.ctx.thingname==context.locked.thingname)
+              {
+                var send=true;
+                for(var t of tags)
+                {
+                  if (ws.ctx.tags.filter(s => (s===t)).length==0) {
+                    send=false;
+                    break;
+                  }
+                }
+                if (send) ws.send(JSON.stringify(val));
+              }
+            });
+          }
+        }
+      }
     }
   };
 
@@ -954,10 +1106,9 @@ var iotb = function(brokersettings)
         }
         res.files=[];
         res.directories=[];
-        console.log("A "+websitename+" "+filepath);
-        console.log(res);
+        //console.log("A "+websitename+" "+filepath);
+        //console.log(res);
         dbWebSiteFiles.findAll({where:{website: websitename}}).then(list=>{
-          console.log("B");
           for(var i=0;i<list.length;i++)
           {
             var itempath="/"+list[i].filepath;
@@ -1660,13 +1811,17 @@ var iotb = function(brokersettings)
   {
     if (things[options.thing] && (things[options.thing].enabled==true))
     {
-      var context={scriptvars:{}, request:{}};
+      var context={scriptvars:{}, request:{},locked:{}};
       context.scriptvars.method=options.method;
       context.scriptvars.action=options.method;
       if (options.hasOwnProperty('from')) context.scriptvars.from=options.from;
       if (options.hasOwnProperty('varname')) {
         context.scriptvars.varname=options.varname;
         context.scriptvars.name=options.varname;
+      }
+      if (options.hasOwnProperty('ws'))
+      {
+        context.locked.ws=options.ws;
       }
       if (options.hasOwnProperty('value')) context.scriptvars.value=options.value;
       if (options.hasOwnProperty('valueraw')) context.scriptvars.valueraw=options.valueraw;
@@ -1693,6 +1848,7 @@ var iotb = function(brokersettings)
 
       context.scriptvars.res="done";
       context.scriptvars.thingname=options.thing;
+      context.locked.thingname=options.thing;
       context.scriptvars.events=things[options.thing].events;
       var unixstart=Date.now();
       context.scriptvars.unixtime=unixstart;
@@ -1712,7 +1868,7 @@ var iotb = function(brokersettings)
         things[options.thing].profiling.load=100.0*things[options.thing].profiling.scriptruntime/(unixstop-things[options.thing].profiling.initunixtime);
         if (options.method==="init" || options.method==="tick")
         {
-          if (context.scriptvars.timeout && context.scriptvars.timeout>0.095)
+          if (context.scriptvars.hasOwnProperty(timeout) && context.scriptvars.timeout>0.095)
           {
             things[options.thing].timeoutID=setTimeout(function(){
               callThing({
@@ -1722,7 +1878,13 @@ var iotb = function(brokersettings)
             },context.scriptvars.timeout*1000);
           }
         }
+  
         //obsolete if (context.scriptvars.hasOwnProperty('result')) return context.scriptvars.result;
+        //if (context.scriptvars.hasOwnProperty("resraw")) return context.scriptvars.resraw;
+        //var res={json: context.scriptvars.res};
+        //if (context.scriptvars.hasOwnProperty("resraw")) res.raw=context.scriptvars.resraw;
+        //return res;
+
         return context.scriptvars.res;
       }
       catch(e)
@@ -1738,13 +1900,20 @@ var iotb = function(brokersettings)
     return null;
   }
 
-  app.use(session({
-      secret: '35FE-98sXq-W87Fxiop9',
-      resave: true,
-      saveUninitialized: true
-  }));
+  var sessionHandler=session({
+    secret: '35FE-98sXq-W87Fxiop9',
+    resave: true,
+    saveUninitialized: true
+  });
+
+  app.use(sessionHandler);
 
   app.use(express.static(path.join(__dirname,'web')));
+/*
+  app.post(sessionobj);
+
+  app.post(express.static(path.join(__dirname,'web')));
+*/
 
   // Authentication and Authorization Middleware
   var authenticateUser = function(req, res, next)
@@ -1767,7 +1936,185 @@ var iotb = function(brokersettings)
     else
       return res.sendStatus(401);
   };
+
   
+
+  app.ws('/thing/:thingname/:varname', function (ws, req) {
+    var ctx={
+      thingname:req.params.thingname,
+      varname:req.params.varname,
+      tags:[],
+      id:wgUID()
+    };
+    ws.ctx=ctx;
+    var inputdata={
+      thing: req.params.thingname,
+      method: "websocket",
+      varname: req.params.varname,
+      ws:ws
+    };
+    if (things[inputdata.thing] && (things[inputdata.thing].enabled==true))
+    {
+
+      ws.on('message',(msg)=>{
+        var error="";
+        inputdata.valueraw=msg;
+        try
+        {
+          inputdata.value=JSON.parse(msg);
+        }
+        catch(e)
+        {
+          //error="API-Error: Invalid JSON format for value query parameter"
+        }
+        if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
+        if (req.session && checkUserLogin(req.session.user, req.session.password))
+        {
+          inputdata.sessionuser=req.session.user;
+        }
+        inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+        var result="";
+        if (error=="")
+        {
+          result=callThing(inputdata);
+          if (result==null)
+          {
+            ws.close();
+          }
+          else
+          {
+            // result is not used in this case!!!
+            // ws.send(JSON.stringify(result));
+          }
+        }
+        else
+        {
+        }
+      });
+
+      // call with no value relates to an incoming connection
+      if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
+      if (req.session && checkUserLogin(req.session.user, req.session.password))
+      {
+        inputdata.sessionuser=req.session.user;
+      }
+      inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+      var result="";
+      result=callThing(inputdata);
+      if (result==null)
+      {
+        ws.close();
+      }
+      else
+      {
+        // result is not used in this case!!!
+        // ws.send(JSON.stringify(result));
+      }
+    }
+    else
+    {
+      ws.close();
+    }
+  });
+
+  app.ws('*', function (ws, req) {
+    // other websockets would be closed
+    ws.close();
+  });
+
+  app.get('/thing/:thingname/:varname', function (req, res, next) {
+    var inputdata={
+      thing: req.params.thingname,
+      method: "http",
+      varname: req.params.varname
+    };
+    var error="";
+    if (req.query.hasOwnProperty("value")) {
+      inputdata.valueraw=req.query.value;
+      try {
+        inputdata.value=JSON.parse(req.query.value);
+      }
+      catch(e)
+      {
+        //error="API-Error: Invalid JSON format for value query parameter"
+      }
+    }
+    if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
+    if (req.session && checkUserLogin(req.session.user, req.session.password))
+    {
+      inputdata.sessionuser=req.session.user;
+    }
+    inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    var result="";
+    if (error=="")
+    {
+      result=callThing(inputdata);
+      res.header("Content-Type", "application/json");
+      res.header("Access-Control-Allow-Origin","*");
+      res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+      res.status(200).send(JSON.stringify(result));
+    }
+    else
+    {
+      result=error;
+      res.header("Content-Type", "application/json");
+      res.header("Access-Control-Allow-Origin","*");
+      res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+      res.status(400).send(JSON.stringify(result));
+    }
+  });
+
+  app.post('/thing/:thingname/:varname', function (req, res, next) {
+    var body="";
+    var inputdata={
+      thing: req.params.thingname,
+      method: "http",
+      varname: req.params.varname
+    };
+    req.on('data', chunk=>{
+      body+=chunk.toString();
+    });
+    req.on('end',()=>{
+      var error="";
+      inputdata.valueraw=body;
+      try {
+        inputdata.value=JSON.parse(body);
+      }
+      catch(e)
+      {
+        //error="API-Error: Invalid JSON format for value query parameter"
+      }
+      if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
+      if (req.session && checkUserLogin(req.session.user, req.session.password))
+      {
+        inputdata.sessionuser=req.session.user;
+      }
+      inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+      var result="";
+      if (error=="")
+      {
+        result=callThing(inputdata);
+        res.header("Content-Type", "application/json");
+        res.header("Access-Control-Allow-Origin","*");
+        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+        res.status(200).send(JSON.stringify(result));
+      }
+      else
+      {
+        result=error;
+        res.header("Content-Type", "application/json");
+        res.header("Access-Control-Allow-Origin","*");
+        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+        res.status(400).send(JSON.stringify(result));
+      }
+    });
+  });
+
+
   // push notifications
   app.get("/publicsettings", (req, res) => {
     var obj={webpushpublickey:publicVapidKey};
@@ -1954,7 +2301,10 @@ var iotb = function(brokersettings)
     var data={
       users:_userslist,
       things:_thingslist,
-      websites:_websiteslist
+      websites:_websiteslist,
+      websockets:{
+        opensockets:wss.clients.size
+      }
     };
     res.send(JSON.stringify(data));
   });
@@ -2290,6 +2640,7 @@ var iotb = function(brokersettings)
             filepath: zipEntry.entryName,
             content: ""
           };
+          console.log(data);
           if (zipEntry.entryName.endsWith("/")==false) {
             data.content=zipEntry.getData();
             totalsum+=data.content.length;
@@ -2323,98 +2674,6 @@ var iotb = function(brokersettings)
       }
     });
   });
-
-  app.get('/thing/:thingname/:varname', function (req, res, next) {
-    var inputdata={
-      thing: req.params.thingname,
-      method: "http",
-      varname: req.params.varname
-    };
-    var error="";
-    if (req.query.hasOwnProperty("value")) {
-      inputdata.valueraw=req.query.value;
-      try {
-        inputdata.value=JSON.parse(req.query.value);
-      }
-      catch(e)
-      {
-        //error="API-Error: Invalid JSON format for value query parameter"
-      }
-    }
-    if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
-    if (req.session && checkUserLogin(req.session.user, req.session.password))
-    {
-      inputdata.sessionuser=req.session.user;
-    }
-    inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-    var result="";
-    if (error=="")
-    {
-      result=callThing(inputdata);
-      res.header("Content-Type", "application/json");
-      res.header("Access-Control-Allow-Origin","*");
-      res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-      res.status(200).send(JSON.stringify(result));
-    }
-    else
-    {
-      result=error;
-      res.header("Content-Type", "application/json");
-      res.header("Access-Control-Allow-Origin","*");
-      res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-      res.status(400).send(JSON.stringify(result));
-    }
-  });
-
-  app.post('/thing/:thingname/:varname', function (req, res, next) {
-    var body="";
-    var inputdata={
-      thing: req.params.thingname,
-      method: "http",
-      varname: req.params.varname
-    };
-    req.on('data', chunk=>{
-      body+=chunk.toString();
-    });
-    req.on('end',()=>{
-      var error="";
-      inputdata.valueraw=body;
-      try {
-        inputdata.value=JSON.parse(body);
-      }
-      catch(e)
-      {
-        //error="API-Error: Invalid JSON format for value query parameter"
-      }
-      if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
-      if (req.session && checkUserLogin(req.session.user, req.session.password))
-      {
-        inputdata.sessionuser=req.session.user;
-      }
-      inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-      var result="";
-      if (error=="")
-      {
-        result=callThing(inputdata);
-        res.header("Content-Type", "application/json");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(200).send(JSON.stringify(result));
-      }
-      else
-      {
-        result=error;
-        res.header("Content-Type", "application/json");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(400).send(JSON.stringify(result));
-      }
-    });
-  });
-
-
 
   app.post('/key', authenticateUser, function (req, res, next) {
     try {
@@ -2497,7 +2756,15 @@ var iotb = function(brokersettings)
                 loadWebSitesFromDB(function(){
                   //dumpUsers2Files();
                   console.log("Database loaded!");
-                  app.listen(brokersettings.port);
+                  httpServer=app.listen(brokersettings.port);
+                  /*
+                  httpServer.on('upgrade', (req, socket, head) => {
+                    wsServer.handleUpgrade(req, socket, head, (ws) => {
+                      wsServer.emit('connection', ws, req)
+                    });
+                  });
+                  console.log("WebSocket registered");
+                  */
                   resolve("SUCCESS");
                 });
               });

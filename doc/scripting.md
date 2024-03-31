@@ -132,7 +132,11 @@ __isValue__() | Check if value is passed to the script. value is a scriptvariabl
 __isKeyToken__() | Check if keytoken is passed via query. keytoken is not a scriptvariable.
 __usedKey__(_keyname_ or _arrayofkeynames_) | Checks if request uses a valid keytoken pair that match the passed _keyname_ or is within the _arrayofkeynames_ list.
 __httpRequest__(_method_, _url_, _props_) | Perform a http request. The response will be stored in the _events_ array (see events section). The _props_ parameter is an object with following optional properties for the request: _jsonbody_, _body_, _headers_, _query_, and _eventid_. _eventid_ is used to find the corresponding event in the events array. _eventid_ could be a string or a complex object.
-
+__getWebSocketID__() | In case of a thing call because of a new established websocket or incoming data this function provides the corresponding Websocket-ID which could be used for __sendWebSocket__(...). Otherwise this function returns an empty __string__.
+__getWebSocketIDs__() | Get an array of all websocket IDs (strings) of the current thing which could be used for __sendWebSocket__(...). With __removeFromArray__ the current WebSocketID could be removed from this list.
+__getWebSocketTags__() | In case of a thing call because of a new established websocket or incoming data this function provides the tags of the current websocket which could be used for __sendWebSocket__(...). Otherwise this function returns an empty __string__.
+__setWebSocketTags__(_tags_) | In case of a thing call because of a new established websocket or incoming data this function sets the tags of the current websocket which are used for __sendWebSocket__(...).
+__sendWebSocket__(_dataobject_[,_destinations_]) | Send the JSON of the _dataobject_ to all websockets of the thing or to the websockets, where the _destionation_ filter matches. The _destionations_ filter is an array of Websocket-IDs or subarrays containing matching tags.
 
 ## Script Functions - Data Conversion
 
@@ -167,7 +171,7 @@ __unshiftArray__(_array_,_element_) | Append an element at the begin of an array
 __insertArrayAt__(_array_,_index_,_element_) | Inserts an element at the given index. If index -1 selects the end of the array. -2 the last element, -3 the element befor the last element, ... .
 __replaceArrayAt__(_array_,_index_,_element_) | Replace an element at the given index. Index -2 selects the last element, -3 the element befor the last element, ... . The old element  is returned.
 __removeArrayAt__(_array_,_index_) | Remove an element at the given index. Index -2 selects the last element, -3 the element befor the last element, ... . The removed element is returned.
-__removeFromArray__(_array_,_object_) | Removes the _object_ instance from _array_ if exists and returns true if found and removed. Otherwise false.
+__removeFromArray__(_array_,_object_) | Removes the first _object_ instance from _array_ if exists and returns true if found and removed. Otherwise false.
 __toBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
 __fromBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
 
