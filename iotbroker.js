@@ -2198,24 +2198,31 @@ var iotb = function(brokersettings)
     if (error=="")
     {
       result=callThing(inputdata);
-      if (result.type=="txt")
+      if (result===null || !result.hasOwnProperty("type") || !result.hasOwnProperty("res"))
       {
-        res.header("Content-Type", "text/plain");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(200).send(result.res);
+        res.status(200).send(JSON.stringify(null));
       }
-      else if (result.type=="html")
+      else
       {
-        res.header("Content-Type", "text/html");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(200).send(result.res);
-      } else {
-        res.header("Content-Type", "application/json");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(200).send(JSON.stringify(result.res));  
+        if (result.type=="txt")
+        {
+          res.header("Content-Type", "text/plain");
+          res.header("Access-Control-Allow-Origin","*");
+          res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+          res.status(200).send(result.res);
+        }
+        else if (result.type=="html")
+        {
+          res.header("Content-Type", "text/html");
+          res.header("Access-Control-Allow-Origin","*");
+          res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+          res.status(200).send(result.res);
+        } else {
+          res.header("Content-Type", "application/json");
+          res.header("Access-Control-Allow-Origin","*");
+          res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+          res.status(200).send(JSON.stringify(result.res));  
+        }
       }
     }
     else
