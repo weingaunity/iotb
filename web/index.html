@@ -164,10 +164,10 @@
               </q-btn>
             </q-card-title>
             <q-card-main>
-              <div v-if="tab.hasOwnProperty('titleimage')">
+              <div  v-if="tab.hasOwnProperty('titleimage')">
                 <img :src="tab.titleimage" :width="tab.titleimagewidth"/>
               </div>
-              <p></p>
+              <p v-if="tab.hasOwnProperty('hint')" v-html="tab.hint"></p>
               <q-toolbar v-for="(favorite,index) in tab.list" color="primary" inverted>
                 <q-btn flat round dense icon="open_in_browser" @click.native="openLink(favorite.href);"></q-btn>
                 <q-toolbar-title @click.native="openLink(favorite.href);">
@@ -239,6 +239,7 @@
                 <q-toolbar-title>
                   /thing/{{thing.thing}}
                   <span slot="subtitle">{{thing.description}}</span>
+                  <q-btn dense="dense" v-if="thing.errorlog.length>0" icon="error" small color="red" @click="alert(JSON.stringify(thing.errorlog,null,2));console.log(thing.errorlog);">{{thing.errorlog.length}} Error(s)</q-btn>
                   <q-chip v-for="(owner) in thing.owners" icon="account circle" small color="teal">{{owner}}</q-chip>
                   <q-chip v-for="(tag) in thing.tags" icon="bookmark" small color="tertiary">{{tag}}</q-chip>
                 </q-toolbar-title>

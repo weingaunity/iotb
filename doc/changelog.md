@@ -1,6 +1,6 @@
 # Change Log
 
-## work
+## Open
  * Issue: fetch canceled no resource with given identifier found
  * Todo: formating unixtime number
  * Todo: Improve admindashboard request: add thing statistics (calls, db requirements, average bandwidth)
@@ -8,9 +8,25 @@
  * Todo: more examples
  * Idea: 2 stage requests (e.g. db requests)
  * Todo: deinit event. Still not clear if this feature is required.
- * Todo: FNN Layer + Activation Functions
+ * Todo: Activation Functions (FNN Layer can be done with matrix operations)
+ * Todo: Fix problem with different handling of directories in ZIP-files
 
- ## 20231101
+## 20241224
+ * New: Errors during the thing execution are shown now in the thing-list. A click on the chip opens a dialog with the errors.
+ * New: __sendEMail__ function 
+ * New: WebSockets ... list functions here
+ * New: http-action can now return the __res__-variable in different types (json is default, txt, html; can be defined with variable __restype__)
+ * New: Matrix operations __matT__, __matAdd__, __matMul__
+ * New: Users with assigned valid e-mail address in their profile can now change the password if they have lost it. The link appears, if the login failed.
+ * New: __toCharCodes__ and __fromCharCodes__ allow to convert between strings and an array of ascii codes.
+ * Fixed: Page reloaded for new login after password was changed.
+ * Fixed: Exception is raised in case of a user-login via admin and the case, that the username does not exists.
+ * Fixed: wrong use of arguments in __maxFromArray__ and __minFromArray__
+ * Added: Scripting examples for WebSockets, EMails, timed taskes (cron-jobs)
+ * Added: __toJson__ now accepts a 2nd argument to enable pritty print version.
+
+
+## 20231101
  * Updated: Documentation for events, httpRequest, additional standard variables
  * New: /query/admindashboard users, things and websites overview for diagnostics and administration
 

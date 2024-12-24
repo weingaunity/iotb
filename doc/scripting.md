@@ -35,6 +35,7 @@ events         | array of events (see section Event Formats) collected since the
 
 ```
 res   = < default: "done", the content is returned to http response or caller thing >
+restype = <only in case of http action, default:"json", also possible "txt","html">
 timeout     = < used from init or tick caller to plan next tick event in seconds. value 0 deactivates tick calls >
 ```
 
@@ -137,6 +138,7 @@ __getWebSocketIDs__() | Get an array of all websocket IDs (strings) of the curre
 __getWebSocketTags__() | In case of a thing call because of a new established websocket or incoming data this function provides the tags of the current websocket which could be used for __sendWebSocket__(...). Otherwise this function returns an empty __string__.
 __setWebSocketTags__(_tags_) | In case of a thing call because of a new established websocket or incoming data this function sets the tags of the current websocket which are used for __sendWebSocket__(...).
 __sendWebSocket__(_dataobject_[,_destinations_]) | Send the JSON of the _dataobject_ to all websockets of the thing or to the websockets, where the _destionation_ filter matches. The _destionations_ filter is an array of Websocket-IDs or subarrays containing matching tags.
+__sendEMail__(_message_) | Sends the _message_ per E-Mail. _message_={totopics:["test","all",...], tousers:["iotuser1","iotuser2",...],subject:"Subject..:",message:{text:"...",html:"<p>...<p>"}}. The __topics__ concerns the current thing and the subscribed email addresses. This is managed within the __brokersettings-thing__ within the ram-variable _registeredemailaddresses_. The _tousers_ array contains iotbroker user names, where the email-address of the user is used for this mail. This function returns __true__ if everything seems to be ok. E.g. if the iotbroker email account is not configured or something is wrong within the passed arguments then __false__ will be returned.
 
 ## Script Functions - Data Conversion
 
@@ -146,8 +148,13 @@ __Number__(_value_[,_precision_]) | Convert a string or number to a number and r
 __hex2dec__(_hexstring_) | Converts a string with a hex number to an integer number
 __dec2hex__(_number_) | Converts an integer (string) to a lower case hex string
 __dec2HEX__(_number_) | Converts an integer (string) to an upper case hex string
-__toJson__(_object_) | returns the json-string of the passed object
+__toJson__(_object_[,true]) | returns the json-string of the passed object. The 2nd argument enables pritty print version of json.
 __fromJson__(_jsonstring_) | converts the passed json-string into an object
+__toCharCodes__(_string_) | Returns an array with the ascii codes
+__fromCharCodes__(_array_) | Returns a string from the array containing ascii codes.
+__toBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
+__fromBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
+
 
 ## Script Functions - String and Array
 
@@ -172,8 +179,6 @@ __insertArrayAt__(_array_,_index_,_element_) | Inserts an element at the given i
 __replaceArrayAt__(_array_,_index_,_element_) | Replace an element at the given index. Index -2 selects the last element, -3 the element befor the last element, ... . The old element  is returned.
 __removeArrayAt__(_array_,_index_) | Remove an element at the given index. Index -2 selects the last element, -3 the element befor the last element, ... . The removed element is returned.
 __removeFromArray__(_array_,_object_) | Removes the first _object_ instance from _array_ if exists and returns true if found and removed. Otherwise false.
-__toBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
-__fromBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.
 
 ## Script Functions - Math
 
@@ -209,6 +214,27 @@ __sqrt__(_x_) | ...
 __tan__(_x_) | ...
 __tanh__(_x_) | ...
 __trunc__(_x_) | ...
+
+## Script Functions - Matrix Operations
+A matrix is an array of arrays. Example:
+
+```javascript
+// calculate the root mean squared value of an array of measurements
+measurements=[1,2,3,4,5]; // not a matrix
+mat=[measurements]; // now a matrix with one row
+rms=sqrt(matMul(mat,matT(mat)));
+// rms=sqrt(1^2+2^2+3^2+4^2+5^2)=7.4162
+
+A=[[1,2,3],[4,5,6]];
+//A= [ 1 2 3 ]
+//   [ 4 5 6 ];
+```
+
+Math-Function | Description
+---------- | -------------
+__matT__(_M_) | Transpose the matrix _M_
+__matAdd__(_A_,_B_) | Elementwise addition of two matrices _A_ and _B_ with the same dimension.
+__matMul__(_A_,_B_) | Matrix multiplication of _A_ x _B_ (Dimensions: m x n * n x p=m x p)
 
 ## Script Functions - Filters, Signalprocessing
 

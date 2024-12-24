@@ -1,6 +1,6 @@
 // *********************************************************************
 // IoTB - Thing-Script
-// Copyright (C) 2018  Weichinger Klaus, snaky.1@gmx.at
+// Copyright (C) 2018-2024 DI Weichinger Klaus,MSc, snaky.1@gmx.at
 // Project web-page: https://npmjs.com/package/iotb
 //
 // License:  GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
@@ -467,6 +467,35 @@ var thingscript = function()
         }
         else return "";
       },
+
+      toCharCodes:function(context,args)
+      {
+        if (args.length==1)
+        {
+          var s=args[0]();
+          var res=[];
+          for(let i = 0; i < s.length; i++){
+            res.push( s.charCodeAt(i));
+          }
+          return res;
+        }
+        else return [];
+      },
+
+      fromCharCodes:function(context,args)
+      {
+        if (args.length==1)
+        {
+          var charcodes=args[0]();
+          try{
+            return String.fromCharCode(...charcodes);
+          } catch {error}
+          {
+            return "xx";
+          }
+        }
+        else return "yy";
+      },
             
       toJson: function(context,args)
       {
@@ -474,7 +503,17 @@ var thingscript = function()
         {
           return JSON.stringify(args[0]());
         }
-        else return undefined;
+        else if(args.length==2)
+        {
+          if (args[1]()===true)
+          {
+            return JSON.stringify(args[0](),null,2);
+          } else {
+            return JSON.stringify(args[0]());
+
+          }
+        }
+          else return undefined;
       },
 
       fromJson: function(context,args)
@@ -485,16 +524,6 @@ var thingscript = function()
         }
         else return undefined;
       },
-
-/*
-ToBase64 = function (u8) {
-    return btoa(String.fromCharCode.apply(null, u8));
-}
-
-FromBase64 = function (str) {
-    return atob(str).split('').map(function (c) { return c.charCodeAt(0); });
-}
-*/
 
       toBase64: function(context,args)
       {
@@ -834,7 +863,7 @@ FromBase64 = function (str) {
         return res;
       },
 
-      maxFromArray:function()
+      maxFromArray:function(context, args)
       {
         var res=NaN;
         if (args.length==1)
@@ -852,7 +881,7 @@ FromBase64 = function (str) {
         return res;
       },
 
-      minFromArray:function()
+      minFromArray:function(context, args)
       {
         var res=NaN;
         if (args.length==1)
@@ -864,6 +893,97 @@ FromBase64 = function (str) {
             for(var i=1;i<arr.length;i++)
             {
               if (arr[i]<res) res=arr[i];
+            }
+          }
+        }
+        return res;
+      },
+
+      matT:function(context, args)
+      {
+        var res=[];
+        if (args.length==1)
+        {
+          var matA=args[0]();
+          if (Array.isArray(matA) && matA.length>0 && Array.isArray(matA[0]))
+          {
+            var m=matA.length;
+            var n=matA[0].length;
+            for(var c=0;c<n;c++)
+            {
+              var row=[];
+              for(var r=0;r<m;r++)
+              {
+                row.push(matA[r][c]);
+              }
+              res.push(row);
+            }
+          }
+        }
+        return res;
+      },
+
+      matAdd:function(context, args)
+      {
+        var res=[];
+        if (args.length==2)
+        {
+          // e.g. 3x2:  [[1,2],[3,4],[5,6]];
+          // mxn x nxp
+          var matA=args[0]();
+          var matB=args[1]();
+          if (Array.isArray(matA) && matA.length>0 && Array.isArray(matA[0]) && Array.isArray(matB) && matB.length>0 && Array.isArray(matB[0]))
+          {
+            var m=matA.length;
+            var n=matA[0].length;
+            if (m==matB.length && n==matB[0].length)
+            {
+              for(var r=0;r<m;r++)
+              {
+                var row=[];
+                for(var c=0;c<n;c++)
+                {
+                  row.push(matA[r][c]+matB[r][c]);
+                }
+                res.push(row);
+              }
+            }
+          }
+        }
+        return res;
+      },
+
+
+      matMul:function(context, args)
+      {
+        var res=[];
+        if (args.length==2)
+        {
+          // e.g. 3x2:  [[1,2],[3,4],[5,6]];
+          // mxn x nxp
+          var matA=args[0]();
+          var matB=args[1]();
+          if (Array.isArray(matA) && matA.length>0 && Array.isArray(matA[0]) && Array.isArray(matB) && matB.length>0 && Array.isArray(matB[0]))
+          {
+            var m=matA.length;
+            var n=matA[0].length;
+            var p=matB[0].length;
+            if (n==matB.length)
+            {
+              for(var r=0;r<m;r++)
+              {
+                var row=[];
+                for(var c=0;c<p;c++)
+                {
+                  var sum=0;
+                  for(var i=0;i<n;i++)
+                  {
+                    sum+=matA[r][i]*matB[i][c];
+                  }
+                  row.push(sum);
+                }
+                res.push(row);
+              }
             }
           }
         }

@@ -3,6 +3,7 @@ var webpushkeys=require('./webpushkeys.json');
 
 var iotbapp=iotb({
   port:8081, // optional edit
+  publichost:"localhost:8081", // edit, required for e.g. links in emails; e.g. iotbroker.xyz  
   systemadministrator:"iotadmin - <yourmail>", //edit
   defaultadmin:{
     user: "iotadmin",                     // edit
@@ -17,6 +18,23 @@ var iotbapp=iotb({
     privatekey: webpushkeys.privateKey,
     email: "<yourmail>" // edit
   },
+/*  
+  email:{
+    type:"microsoft",
+    username:"<yourmail>", // edit
+    password:"<password>", // edit
+    scopes: [
+        //"https://outlook.office.com/IMAP.AccessAsUser.All",
+        //"https://outlook.office.com/POP.AccessAsUser.All",
+        "https://outlook.office.com/SMTP.Send"
+        //"offline_access"
+    ],
+    auth: {
+        clientId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // edit
+        authority: 'https://login.microsoftonline.com/yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy/v2.0', // edit
+    }
+  },  
+*/  
   limits:{  // default settings, can be changed
     zipfileupload_mb:5,
     websitetotalsize_mb:10

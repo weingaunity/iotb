@@ -206,6 +206,8 @@ program+="if (removeFromArray(array3,'test')==false) print('PASSED'); else print
 program+="if (removeFromArray(array3,'Hallo')==true) print('PASSED'); else print('FAILED');\n";
 program+="jsonobj1={a:1,b:'asd'};jsonstr=toJson(jsonobj1);jsonobj2=fromJson(jsonstr);\n";
 program+="if ((jsonobj2.a==1)&&(jsonobj2.b=='asd')) print('PASSED JSON'); else print('FAILED');\n";
+program+="print(toJson(jsonobj1,false));\n"
+program+="print(toJson(jsonobj1,true));\n"
 program+="b64array1=[4,5,6,7];b64str=toBase64(b64array1);b64array2=fromBase64(b64str1);\n";
 program+="print(b64array1);\n";
 program+="print(b64str);\n";
@@ -226,6 +228,35 @@ program+="print((x.y==null)?'PASSED':'FAILED');\n";
 program+="print((x.z!=null)?'PASSED':'FAILED');\n";
 program+="x.z=null;\n";
 program+="print((x.z==null)?'PASSED':'FAILED');\n";
+program+="str1='ABCdef';\n";
+program+="arr1=toCharCodes(str1);\n";
+program+="print(arr1);\n";
+program+="arr1[0]=arr1[0]+1;arr1[1]=arr1[1]+1;arr1[2]=arr1[2]+1;\n";
+program+="print(arr1);\n";
+program+="str2=fromCharCodes(arr1);\n";
+program+="print(str2);\n";
+program+="print((str2=='BCDdef')?'PASSED':'FAILED');\n";
+program+="print('====== Matrix-Operations ==================');\n";
+program+="matA=[[1],[2],[3]];matB=[[4,5,6]];\n";
+program+="matC=matMul(matB,matA);\n";
+program+="matD=matMul(matA,matB);\n";
+program+="print((matC[0][0]==32)?'PASSED':'FAILED');\n";
+program+="print((matD[0][0]==4)?'PASSED':'FAILED');\n";
+program+="print((matD[1][1]==10)?'PASSED':'FAILED');\n";
+program+="print((matD[2][2]==18)?'PASSED':'FAILED');\n";
+program+="print((matD[2][0]==12)?'PASSED':'FAILED');\n";
+program+="print((matD[0][2]==6)?'PASSED':'FAILED');\n";
+program+="matE=matMul(matB,matT(matB));\n";
+program+="print((matE[0][0]==77)?'PASSED':'FAILED');\n";
+program+="matF=matMul(matA,[[1,1,1,1]]);\n";
+program+="print(matAdd(matF,matF));\n";
+program+="measurements=[1,2,3,4,5];\n";
+program+="mat=[measurements];\n";
+program+="rms=sqrt(matMul(mat,matT(mat)));\n";
+program+="print(rms);\n";
+
+
+
 
 var fun=thingscriptcompiler.compile(program,scriptoptions);
 var perftest=function(count){

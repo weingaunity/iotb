@@ -1,6 +1,6 @@
 // *********************************************************************
 // IoTB - IoT-Broker
-// Copyright (C) 2018  Weichinger Klaus, snaky.1@gmx.at
+// Copyright (C) 2018-2024  DI Weichinger Klaus,MSc , snaky.1@gmx.at
 // Project web-page: https://npmjs.com/package/iotb
 //
 // License:  GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
@@ -70,6 +70,21 @@ var iotb = function(brokersettings)
       '.gif' : 'image/gif',
       '.ico' : 'image/x-icon'
   };
+
+  function generatePass(len) {
+    let pass = '';
+    let str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+        'abcdefghijklmnopqrstuvwxyz0123456789@#$';
+
+    for (let i = 1; i <= len; i++) {
+        let char = Math.floor(Math.random()
+            * str.length + 1);
+
+        pass += str.charAt(char)
+    }
+
+    return pass;
+}
 
 
   function utf8_encode(s) {
@@ -301,6 +316,18 @@ var iotb = function(brokersettings)
     publicVapidKey,
     privateVapidKey
   );
+
+  var mailer={};
+  if (brokersettings.hasOwnProperty("email"))
+  {
+    if (brokersettings.email.hasOwnProperty("type"))
+    {
+      if (brokersettings.email.type=="microsoft")
+      {
+        mailer=require('./emailMicrosoft.js').mailer(brokersettings.email);
+      }
+    }
+  }
 
   var sendPushNotification=function(sub,obj) {
     webpush.sendNotification(sub, JSON.stringify(obj))
@@ -664,7 +691,6 @@ var iotb = function(brokersettings)
       {
         var val=args[0]();
         wss.clients.forEach((ws)=>{
-          // Sicherheitsproblem gelöst: thingname könnte geändert werden in scriptvars, wurde darum auf locked geändert
           if (ws.ctx.thingname==context.locked.thingname)
           {
             ws.send(JSON.stringify(val));
@@ -676,7 +702,6 @@ var iotb = function(brokersettings)
         var val=args[0]();
         var destinations=args[1]();
         wss.clients.forEach((ws)=>{
-          // Sicherheitsproblem gelöst: thingname könnte geändert werden in scriptvars, wurde darum auf locked geändert
           if (ws.ctx.thingname==context.locked.thingname)
           {
             var send=false;
@@ -729,6 +754,92 @@ var iotb = function(brokersettings)
           }
         }
       }
+    },
+
+    sendEMail:function(context,args)
+    {
+      var res=false;
+      if (mailer.hasOwnProperty(sendMail))
+      {
+        if (args.length==1)
+        {
+          var msg=args[0]();
+          //var subject=args[2]();
+          //var message=args[3]();
+          var to=[];
+          if (msg.hasOwnProperty("totopics"))
+          {
+            var totopics=msg.totopics;
+            if (things.hasOwnProperty("brokersettings"))
+            {
+              if (things["brokersettings"].ramvars.hasOwnProperty("registeredemailaddresses"))
+              {
+                var regemailadrs=things["brokersettings"].ramvars.registeredemailaddresses;
+                if (regemailadrs.hasOwnProperty(context.locked.thingname))
+                {
+                  regemailadrs=regemailadrs[context.locked.thingname];
+                  for(var regemailadr of regemailadrs)
+                  {
+                    if (totopics.includes(regemailadr.topic))
+                    {
+                      if (regemailadr.token.length>0 && regemailadr.token==regemailadr.validatedtoken && regemailadr.token!=regemailadr.deletedtoken)
+                      {
+                        if (to.includes(regemailadr.email)==false) to.push(regemailadr.email);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if (msg.hasOwnProperty("tousers"))
+          {
+            var tousers=msg.tousers;
+            for(var user of tousers)
+            {
+              if (users.hasOwnProperty(user))
+              {
+                
+                var email=users[user].email;
+                if (email.length>0 && email.indexOf("@")>0)
+                {
+                  if (to.includes(email)==false)
+                  {
+                    to.push(email);
+                  }
+                }
+              }
+            }
+          }
+
+          if (to.length>0)
+          {
+            if (msg.hasOwnProperty("subject"))
+            {
+              var mail={
+                to:to,
+                subject:msg.subject
+              };
+              if (msg.hasOwnProperty("message"))
+              {
+                var message=msg.message;
+                if (typeof message === 'string')
+                {
+                  mail.text=message;
+                }
+                if (typeof message === 'object')
+                {
+                  if (message.hasOwnProperty("text")) mail.text=message.text;
+                  if (message.hasOwnProperty("html")) mail.html=message.html;
+                }
+              }
+              mailer.sendMail(mail);
+              res=true;
+            }
+          }
+        }
+      }
+      return res;
     }
   };
 
@@ -796,6 +907,7 @@ var iotb = function(brokersettings)
       // password =================================
       // load from db
       if (userdata.password && (opt.loadFromDB===true)) newuser.password=userdata.password;
+      
       // modified by admin
       if (   users[user] && users[user].enabled===true && users[user].admin===true && users[userdata.user]
           && userdata.newpassword1
@@ -858,7 +970,7 @@ var iotb = function(brokersettings)
 
       if (opt.loadFromDB===false)
       {
-        // write key to database
+        // write user to database
         var data={user: userdata.user,
           username: newuser.username,
           password: newuser.password,
@@ -1807,94 +1919,128 @@ var iotb = function(brokersettings)
     return res;
   };
 
+  var callThingStack=[];
+
   var callThing=function(options)
   {
     if (things[options.thing] && (things[options.thing].enabled==true))
     {
-      var context={scriptvars:{}, request:{},locked:{}};
-      context.scriptvars.method=options.method;
-      context.scriptvars.action=options.method;
-      if (options.hasOwnProperty('from')) context.scriptvars.from=options.from;
-      if (options.hasOwnProperty('varname')) {
-        context.scriptvars.varname=options.varname;
-        context.scriptvars.name=options.varname;
-      }
-      if (options.hasOwnProperty('ws'))
+      if (!callThingStack.includes(options.thing))
       {
-        context.locked.ws=options.ws;
-      }
-      if (options.hasOwnProperty('value')) context.scriptvars.value=options.value;
-      if (options.hasOwnProperty('valueraw')) context.scriptvars.valueraw=options.valueraw;
-      if (options.hasOwnProperty('sessionuser')) context.scriptvars.sessionuser=options.sessionuser;
-
-      if (options.hasOwnProperty('keytoken')) {
-        var keytoken=options.keytoken;
-        context.request.keytoken=keytoken;
-        var index=keytoken.indexOf(':');
-        if(index>0)
+        var context={scriptvars:{}, request:{},locked:{}};
+        context.scriptvars.method=options.method;
+        context.scriptvars.action=options.method;
+        if (context.scriptvars.action=="init")
         {
-          var keyname=keytoken.substr(0,index);
-          if (keys[keyname].enabled==true) 
+          things[options.thing].errorlog=[];
+        }
+
+        if (options.hasOwnProperty('from')) context.scriptvars.from=options.from;
+        if (options.hasOwnProperty('varname'))
+        {
+          context.scriptvars.varname=options.varname;
+          context.scriptvars.name=options.varname;
+        }
+        if (options.hasOwnProperty('ws'))
+        {
+          context.locked.ws=options.ws;
+        }
+        if (options.hasOwnProperty('value')) context.scriptvars.value=options.value;
+        if (options.hasOwnProperty('valueraw')) context.scriptvars.valueraw=options.valueraw;
+        if (options.hasOwnProperty('sessionuser')) context.scriptvars.sessionuser=options.sessionuser;
+
+        if (options.hasOwnProperty('keytoken')) {
+          var keytoken=options.keytoken;
+          context.request.keytoken=keytoken;
+          var index=keytoken.indexOf(':');
+          if(index>0)
           {
-            if (keytoken==keyname+":"+keys[keyname].token)
+            var keyname=keytoken.substr(0,index);
+            if (keys[keyname].enabled==true) 
             {
-              context.scriptvars.keyname=keyname;
+              if (keytoken==keyname+":"+keys[keyname].token)
+              {
+                context.scriptvars.keyname=keyname;
+              }
             }
           }
         }
-      }
-      if (options.hasOwnProperty('clientipaddr')) context.scriptvars.clientipaddr=options.clientipaddr;
-      if (options.hasOwnProperty('db')) context.scriptvars.db=options.db;
+        if (options.hasOwnProperty('clientipaddr')) context.scriptvars.clientipaddr=options.clientipaddr;
+        if (options.hasOwnProperty('db')) context.scriptvars.db=options.db;
 
-      context.scriptvars.res="done";
-      context.scriptvars.thingname=options.thing;
-      context.locked.thingname=options.thing;
-      context.scriptvars.events=things[options.thing].events;
-      var unixstart=Date.now();
-      context.scriptvars.unixtime=unixstart;
-      try {
-        if (context.scriptvars.action=="http") statistics.totalcalls.http++;
-        if (context.scriptvars.action=="thing") statistics.totalcalls.thing++;
-        if (context.scriptvars.action=="tick") statistics.totalcalls.tick++;
-        if (context.scriptvars.action=="init") statistics.totalcalls.init++;
+        context.scriptvars.res="done";
+        if (context.scriptvars.action=="http") context.scriptvars.restype="json";
+        context.scriptvars.thingname=options.thing;
+        context.locked.thingname=options.thing;
+        context.scriptvars.events=things[options.thing].events;
+        var unixstart=Date.now();
+        context.scriptvars.unixtime=unixstart;
+        try {
+          if (context.scriptvars.action=="http") statistics.totalcalls.http++;
+          if (context.scriptvars.action=="thing") statistics.totalcalls.thing++;
+          if (context.scriptvars.action=="tick") statistics.totalcalls.tick++;
+          if (context.scriptvars.action=="init") statistics.totalcalls.init++;
 
-        // yea, call the thing script now !!!!
+          // yea, call the thing script now !!!!
+          callThingStack.push(options.thing);
+          context=things[options.thing].scriptfunction(context);
+          callThingStack.pop();
 
-        context=things[options.thing].scriptfunction(context);
-        things[options.thing].events=[];
+          things[options.thing].events=[];
 
-        var unixstop=Date.now();
-        things[options.thing].profiling.scriptruntime+=unixstop-unixstart;
-        things[options.thing].profiling.load=100.0*things[options.thing].profiling.scriptruntime/(unixstop-things[options.thing].profiling.initunixtime);
-        if (options.method==="init" || options.method==="tick")
-        {
-          if (context.scriptvars.hasOwnProperty(timeout) && context.scriptvars.timeout>0.095)
+          var unixstop=Date.now();
+          things[options.thing].profiling.scriptruntime+=unixstop-unixstart;
+          things[options.thing].profiling.load=100.0*things[options.thing].profiling.scriptruntime/(unixstop-things[options.thing].profiling.initunixtime);
+          if (options.method==="init" || options.method==="tick")
           {
-            things[options.thing].timeoutID=setTimeout(function(){
-              callThing({
-                thing: options.thing,
-                method: "tick"
-              });
-            },context.scriptvars.timeout*1000);
+            if (context.scriptvars.hasOwnProperty("timeout") && context.scriptvars.timeout>0.095)
+            {
+              things[options.thing].timeoutID=setTimeout(function(){
+                callThing({
+                  thing: options.thing,
+                  method: "tick"
+                });
+              },context.scriptvars.timeout*1000);
+            }
           }
-        }
-  
-        //obsolete if (context.scriptvars.hasOwnProperty('result')) return context.scriptvars.result;
-        //if (context.scriptvars.hasOwnProperty("resraw")) return context.scriptvars.resraw;
-        //var res={json: context.scriptvars.res};
-        //if (context.scriptvars.hasOwnProperty("resraw")) res.raw=context.scriptvars.resraw;
-        //return res;
+    
+          //obsolete if (context.scriptvars.hasOwnProperty('result')) return context.scriptvars.result;
+          //if (context.scriptvars.hasOwnProperty("resraw")) return context.scriptvars.resraw;
+          //var res={json: context.scriptvars.res};
+          //if (context.scriptvars.hasOwnProperty("resraw")) res.raw=context.scriptvars.resraw;
+          //return res;
+          if (context.scriptvars.action=="http")
+          {
+            return {
+              res:context.scriptvars.res,
+              type:context.scriptvars.restype,
+            }
+          } else
+          {
+            return context.scriptvars.res;
+          }
 
-        return context.scriptvars.res;
+        }
+        catch(e)
+        {
+    /*
+          console.log(e);
+          console.log(context.scriptvars);
+    */
+          things[options.thing].errorlog.push({timestamp:(new Date(Date.now())).toISOString(), msg:e.message});
+          while (things[options.thing].errorlog.length>10) things[options.thing].errorlog.shift();
+          return "Thing Error: A script error occured!";
+        }        
       }
-      catch(e)
+      else
       {
-  /*
-        console.log(e);
-        console.log(context.scriptvars);
-  */
-        things[options.thing].errorlog={msg:e.message};
-        return "Thing Error: A script error occured!";
+        var logmsg="Recursive Loop detected";
+        if (options.hasOwnProperty("from")) {
+          logmsg="Recursive Loop detected, called from "+options.from;
+        }
+        things[options.thing].errorlog.push({timestamp:(new Date(Date.now())).toISOString(),msg:logmsg});
+        while (things[options.thing].errorlog.length>10) things[options.thing].errorlog.shift();
+
       }
     }
     return null;
@@ -2052,10 +2198,25 @@ var iotb = function(brokersettings)
     if (error=="")
     {
       result=callThing(inputdata);
-      res.header("Content-Type", "application/json");
-      res.header("Access-Control-Allow-Origin","*");
-      res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-      res.status(200).send(JSON.stringify(result));
+      if (result.type=="txt")
+      {
+        res.header("Content-Type", "text/plain");
+        res.header("Access-Control-Allow-Origin","*");
+        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+        res.status(200).send(result.res);
+      }
+      else if (result.type=="html")
+      {
+        res.header("Content-Type", "text/html");
+        res.header("Access-Control-Allow-Origin","*");
+        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+        res.status(200).send(result.res);
+      } else {
+        res.header("Content-Type", "application/json");
+        res.header("Access-Control-Allow-Origin","*");
+        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+        res.status(200).send(JSON.stringify(result.res));  
+      }
     }
     else
     {
@@ -2198,7 +2359,7 @@ var iotb = function(brokersettings)
         if (checkUserLogin(_users[0],req.query.password) && (users[_users[0]].admin===true))
         {
           _usr=_users[1];
-          _pwd=users[_usr].password;
+          if (users.hasOwnProperty(_usr)) _pwd=users[_usr].password;
         }
       }
       if ((_users.length==1) && checkUserLogin(req.query.user, req.query.password)) {
@@ -2215,7 +2376,20 @@ var iotb = function(brokersettings)
         {
           res.redirect(req.query.redirect);
         }
-        else res.send('login failed');
+        else {
+          res.header("Content-Type", "text/html");
+          res.header("Access-Control-Allow-Origin","*");
+          res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+          if (mailer.hasOwnProperty("sendMail"))
+          {
+            res.status(200).send('<!DOCTYPE html><html><head><meta charset="utf-8"><title>IoT-Broker Password Service</title></head><body><p>Login failed for user <b>'+_users[0]+'</b>. If the username is correct written, then the user does not exists or password is written wrong.</p><p><a href="./resetpassword?user='+_users[0]+'">Click here to receive a new password per E-Mail!</a></p></body></html>');
+          }
+          else
+          {
+            res.status(200).send('<!DOCTYPE html><html><head><meta http-equiv="refresh" content="5; URL=./index.html" /><meta charset="utf-8"><title>IoT-Broker Password Service</title></head><body><p>Login failed for user <b>'+_users[0]+'</b>.</p><p> Redirected automatically in 5sec to main page.</p></body></html>');
+          }
+                
+        };
       }
     }
   });
@@ -2224,6 +2398,52 @@ var iotb = function(brokersettings)
     req.session.destroy();
     //res.send("logout success!");
     res.redirect("/");
+  });
+
+  app.get('/resetpassword', function (req, res) {
+    var result='<p>Reset failed, no user, invalid user, or missing reset code specified. Redirected automatically in 5sec to main page.</p>';
+    if (req.query.hasOwnProperty("user")) {
+      var user=req.query.user;
+      var newpwd=generatePass(10);
+      if (users.hasOwnProperty(user))
+      {
+        var userchange={user:user,
+          oldpassword: users[user].password,
+          newpassword1: pwdsalt(newpwd),
+          newpassword2: pwdsalt(newpwd),
+          timestamp:Date.now()+10*60*1000};
+        var mail={
+          to:users[user].email,
+          subject:"Passwort reset requested!"
+        };
+        var url=brokersettings.publichost+"/resetpassword?change="+encodeURIComponent(JSON.stringify(userchange));
+        mail.html="<p>Someone requested a password reset for the user "+user+" of the IoT-Broker. If you open following link, the password is changed to <b>"+newpwd+"</b></p>";
+        mail.html+='<p><a href="https://'+url+'">Change Password via HTTPS</a></p>';
+        mail.html+='<p><a href="http://'+url+'">Change Password via HTTP</a></p>';
+        mail.html+='<p>These links are 10min valid.</p>';
+        mailer.sendMail(mail);
+        result="<p>E-Mail sent! Redirected automatically in 5sec to main page.</p>";
+      }
+    }
+    if (req.query.hasOwnProperty("change"))
+    {
+      var change=JSON.parse(decodeURIComponent(req.query.change));
+      if (change.hasOwnProperty("user"))
+      {
+        if (change.timestamp<Date.now())
+        {
+          result="<p>Link expired. Password not changed. Redirected automatically in 5sec to main page.</p>";
+        }
+        else if (setUserData(change.user,change,{})==true)
+        {
+          result="<p>Password changed! Redirected automatically in 5sec to main page.</p>";
+        }
+      }
+    }
+    res.header("Content-Type", "text/html");
+    res.header("Access-Control-Allow-Origin","*");
+    res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+    res.status(200).send('<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="5; URL=./index.html" /><title>IoT-Broker Password Service</title></head><body>'+result+"</body></html>");
   });
 
   // Get content endpoint
@@ -2789,29 +3009,3 @@ var iotb = function(brokersettings)
 
 module.exports = iotb;
 
-/*
-
-
-console.log("IoT Broker listening on port "+brokersettings.port);
-
-let events = [
-  {name: 'beforeExit', exitCode: 0 },
-  {name: 'uncaughtExecption', exitCode: 1 },
-  {name: 'SIGINT', exitCode: 130 },
-  {name: 'SIGTERM', exitCode: 143 }
-];
-
-events.forEach((e) => {
-  process.on(e.name,  () => {
-    sequelize.connectionManager.close()
-      .then(() => { 
-        console.log('connection cleaned');
-        process.exit(e.exitCode);
-      })
-      .catch((err) => {
-        console.error(err);
-        process.exit(1);
-      })    
-  })
-});
-*/

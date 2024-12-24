@@ -155,6 +155,118 @@ if (action=="http")
 }
 ```
 
+## Task Scheduler
+``` javascript
+weekdays_mo_fr="mo,di,mi,do,fr";
+weekdays_mo_so="mo,di,mi,do,fr,sa,so";
+tasks=ramVar("tasks",{
+  task1:
+  [
+    {weekdays:weekdays_mo_fr,timestamp:"07:20:00"},
+    {weekdays:weekdays_mo_fr,timestamp:"08:15:30"}
+  ],
+  task2:
+  [
+    {weekdays:weekdays_mo_so,timestamp:"04:00:00"},
+    {weekdays:weekdays_mo_fr,timestamp:"07:24:00"},
+    {weekdays:weekdays_mo_fr,timestamp:"08:18:00"},
+    {weekdays:weekdays_mo_so,timestamp:"09:00:00"}
+  ]
+});
+
+mo_so=["mo","di","mi","do","fr","sa","so"];
+time={
+  utc:now(),
+  hh:Number(now("%hh")),
+  mm:Number(now("%mm")),
+  ss:Number(now("%ss")),
+  ms:Number(now("%ms")),
+  WD:Number(now("%WD")),
+  WDname:mo_so[Number(now("%WD"))-1],
+  DD:Number(now("%DD")),
+  MM:Number(now("%MM")),
+  YYYY:Number(now("%YYYY")),
+  unix:unixtime,
+  localdatetime:now("%YYYY-%MM-%DDT%hh:%mm:%ss.%msZ"),
+  localdatetime_sec:now("%YYYY-%MM-%DDT%hh:%mm:%ss"),
+  localtime_sec:now("%hh:%mm:%ss"),
+  localdate:now("%YYYY-%MM-%DD"),
+  localtime_sec:now("%hh:%mm:%ss"),
+  offset:unixtime(now("%YYYY-%MM-%DDT%hh:%mm:%ss.%msZ"))-unixtime
+};
+
+ram=ramVar("ram",{
+  lasttimestamp:"",
+  logs:[]
+});
+
+
+if (action=="init")
+{
+  timeout=0.1;
+}
+if(action=="tick")
+{
+  timeout=0.25;
+  exectask=[];
+  if (ram.lasttimestamp!=time.localtime_sec)
+  {
+    ram.lasttimestamp=time.localtime_sec;
+    // newsec reached
+    foreach(taskname in tasks)
+    {
+      task=tasks[taskname];
+      exec=false;
+      foreach(timestamp in task)
+      {
+        timestampmatched=true;
+        idxl=[0,1,3,4,6,7];
+        if (defined(timestamp.timestamp))
+        {
+          foreach(idx in idxl)
+          {
+            _ca=subString(timestamp.timestamp,idx,1);
+            _cb=subString(time.localtime_sec,idx,1);
+            if (_ca=="X" || (_ca==_cb))
+            {
+              
+            }
+            else
+            {
+              timestampmatched=false;
+            }
+          }
+        }
+        
+        if (defined(timestamp.weekdays) && defined(timestamp.timestamp))
+        {
+          if (containsString(timestamp.weekdays,time.WDname) && timestampmatched==true)
+          {
+            exec=true;
+          }
+        }
+      }
+      if (exec==true) pushArray(exectask,taskname);
+    }
+  }
+  
+  foreach(task in exectask)
+  {
+    logentry=[time.localdatetime,task];
+    if (task=="task1")
+    {
+      // do task 1 things
+    }
+    if (task=="task2")
+    {
+      // do task 2 things
+    }
+    unshiftArray(ram.logs,logentry); // add execution to the top of logs
+  }
+  if (ram.logs.length>20) popArray(ramlogs); // delete old logs
+}
+```
+
 ## Make HTTP-Requests
 ``` javascript
 ram=ramVar("ram",{});
@@ -188,5 +300,67 @@ if (action=="tick")
 {
   ram.counter=ram.counter+1;
   timeout=1;
+}
+```
+
+
+## Improved Variable Service with HTTP and WebSockets
+
+Examples: Set a variable __sensor1__ to 123. Value has to be a valid JSON. So it could be a complex datastructure too.
+```text
+   http(s)://iotbroker/thing/<thingname>/sensor1?value=123
+```
+
+Examples: Get the content of variable __sensor1__
+```text
+   http(s)://iotbroker/thing/<thingname>/sensor1
+```
+
+This could be done with websockets too. Every websocket message to the variable is forwarded to all other websockets (except the source socket).
+This also happens if a http request writes to the variable.
+```text
+  ws://iotbroker/thing/<thingname>/sensor1
+```
+
+The thing-script:
+``` javascript
+ram=ramVar("___debug",{});
+if (action=="http" || action=="thing")
+{
+  x=ramVar(name,0);
+  ram.test=value;
+  if (defined(valueraw)) x=valueraw;
+  if (defined(value))
+  {
+    x=value;
+    ids=getWebSocketIDs();
+    tags=[];
+    foreach(id in ids)
+    {
+      pushArray(tags,[name+"_"+id]);
+    }
+    sendWebSocket(value,tags);
+  }
+  res=x;
+}
+if (action=="websocket")
+{
+  if (defined(value))
+  {
+    x=ramVar(name,0);    
+    x=value;
+    ids=getWebSocketIDs();
+    removeFromArray(ids,getWebSocketID());
+    tags=[];
+    foreach(id in ids)
+    {
+      pushArray(tags,[name+"_"+id]);
+    }
+    sendWebSocket(value,tags);
+  }
+  else
+  {
+    setWebSocketTags([name+"_"+getWebSocketID()]);
+  }
 }
 ```

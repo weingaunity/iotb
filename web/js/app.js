@@ -1,6 +1,6 @@
 // *********************************************************************
 // IoTB - IoT-Broker Web-Interface
-// Copyright (C) 2018  Weichinger Klaus, snaky.1@gmx.at
+// Copyright (C) 2018-2024  DI Weichinger Klaus, MSc, snaky.1@gmx.at
 // Project web-page: https://npmjs.com/package/iotb
 //
 // License:  GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
@@ -615,6 +615,7 @@ window.onload = function() {
             tab.oldpassword="";
             tab.newpassword1="";
             tab.newpassword2="";
+            window.location.reload();
           },
           error:function(request, status, error)
           {
