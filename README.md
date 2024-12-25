@@ -5,7 +5,66 @@ License: [GPLv3](./LICENSE)
 
 Change-Log: [./doc/changelog.md](./doc/changelog.md)
 
+The IoT-Broker is a server with following functionality (__short list__):
 
+- Execution of microservices and web-based IDE to develop them
+- Manage API-keys (tokens)
+- Host webpages
+- User-Management
+
+__Detailed list:__
+
+- __Executes microservices__ (in the following called things), which can be executed via HTTP requests, Web-Sockets, other things and with timers. A thing could have non volative variables which could store information from one call to an other. In addition, this could be stored and reloaded from a database.
+The following example thing provides a HTTP API to switch on/off a light, to get the state of the light and an automatic timer to switch them off after 20 seconds.
+This script can be edited with the embedded web-based IDE. Also see the [detailed description of the script language here](./doc/scripting.md). The custom developed language avoids infinite loops or blocking programms.
+![image](thingscreenshot.png)
+
+```javascript
+// Example Thing Script for a light
+state=ramVar("state",{light:0, timer:0});
+
+if (action=="init")
+{ // executed if the thing is loaded after a change of the program or a server restart
+  timeout=0.1; // set timer to 0.1 seconds
+}
+if (action=="tick")
+{ // executed if timer is done
+  if (state.timer>0) {
+    state.timer=state.timer-1;
+    if (state.timer==0) state.light=0;
+  }
+  timeout=1;
+}
+if (action=="http")
+{
+  if (name=="on")
+  {  // http://<server>/thing/<thingname>/on
+    state.light=1;
+    state.timer=20;
+    res="switched on";
+  }
+  if (name=="off")
+  { // http://<server>/thing/<thingname>/off
+    state.light=0;
+    state.timer=0;
+    res="switched off";
+  }
+  if (name=="settimer" && defined(value))
+  { // http://<server>/thing/<thingname>/settimer?value=30
+    state.light=1;
+    state.timer=Number(value);
+    res="Set timer to "+value+" seconds.";
+  }
+  if (name=="state")
+  { // http://<server>/thing/<thingname>/state
+    res=state;
+  }
+}
+```
+
+- Management of keys which are used to improve the control of HTTP API access
+- Host multiple web-pages to speedup Web-App development.
+- Multiuser management for thing, key and web-pages development.
 ## Installation
 Setup a new IoT-Broker with following steps:
 
