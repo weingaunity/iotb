@@ -16,7 +16,7 @@ __Detailed list:__
 
 - __Executes microservices__ (in the following called things), which can be executed via HTTP requests, Web-Sockets, other things and with timers. A thing could have non volative variables which could store information from one call to an other. In addition, this could be stored and reloaded from a database.
 The following example thing provides a HTTP API to switch on/off a light, to get the state of the light and an automatic timer to switch them off after 20 seconds.
-This script can be edited with the embedded web-based IDE. Also see the [detailed description of the script language here](./doc/scripting.md). The custom developed language avoids infinite loops or blocking programms.
+This script can be edited with the embedded web-based IDE. Also see the [detailed description of the script language here](./doc/scripting.md) and a summary of [examples](./doc/scripting-examples.md). The custom developed language avoids infinite loops or blocking programms.
 ![image](thingscreenshot.png)
 
 ```javascript
