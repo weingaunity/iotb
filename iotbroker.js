@@ -759,7 +759,7 @@ var iotb = function(brokersettings)
     sendEMail:function(context,args)
     {
       var res=false;
-      if (mailer.hasOwnProperty(sendMail))
+      if (mailer.hasOwnProperty("sendMail"))
       {
         if (args.length==1)
         {
