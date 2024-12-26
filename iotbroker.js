@@ -1866,7 +1866,7 @@ var iotb = function(brokersettings)
       res.owners=things[thing].owners;
       res.tags=things[thing].tags;
       res.description=things[thing].description;
-      res.errorlog=things[thing].errorlog || "no error";
+      res.errorlog=things[thing].errorlog || [];
       res.profiling=things[thing].profiling;
     }
     return res;
