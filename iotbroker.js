@@ -52,6 +52,17 @@ var ws=require('ws');
 
 var iotb = function(brokersettings)
 {
+  if (!brokersettings.hasOwnProperty("limits"))
+  {
+    if (!brokersettings.limits.hasOwnProperty("websocketvaluesize"))
+    {
+      brokersettings.limits.websocketvaluesize=20000;
+    }
+    if (!brokersettings.limits.hasOwnProperty("httpvaluesize"))
+    {
+      brokersettings.limits.httpvaluesize=20000;
+    }
+  }
   const publicVapidKey = brokersettings.webpush.publickey;
   const privateVapidKey = brokersettings.webpush.privatekey;
 
@@ -307,8 +318,9 @@ var iotb = function(brokersettings)
     data: { type: Sequelize.TEXT } // json object
   });
 
+
   var app = express();
-  var appws=expressWs(app);
+  var appws=expressWs(app,null,{maxPayload:brokersettings.limits.websocketvaluesize});
   var wss=appws.getWss();
   
   webpush.setVapidDetails(
@@ -1761,6 +1773,7 @@ var iotb = function(brokersettings)
 
       newthing.scriptfunction=thingscriptcompiler.compile(newthing.source,scriptoptions);
       newthing.profiling={scriptruntime:0, initunixtime: Date.now(), load:0};
+      newthing.errorlog=[];
       if (things[thingname] && things[thingname].timeoutID)
       {
         clearTimeout(things[thingname].timeoutID);
@@ -1930,10 +1943,6 @@ var iotb = function(brokersettings)
         var context={scriptvars:{}, request:{},locked:{}};
         context.scriptvars.method=options.method;
         context.scriptvars.action=options.method;
-        if (context.scriptvars.action=="init")
-        {
-          things[options.thing].errorlog=[];
-        }
 
         if (options.hasOwnProperty('from')) context.scriptvars.from=options.from;
         if (options.hasOwnProperty('varname'))
@@ -1973,8 +1982,9 @@ var iotb = function(brokersettings)
         context.scriptvars.thingname=options.thing;
         context.locked.thingname=options.thing;
         context.scriptvars.events=things[options.thing].events;
+        callThingStack.push(options.thing);
         var unixstart=Date.now();
-        context.scriptvars.unixtime=unixstart;
+        context.scriptvars.unixtime=unixstart;        
         try {
           if (context.scriptvars.action=="http") statistics.totalcalls.http++;
           if (context.scriptvars.action=="thing") statistics.totalcalls.thing++;
@@ -1982,7 +1992,6 @@ var iotb = function(brokersettings)
           if (context.scriptvars.action=="init") statistics.totalcalls.init++;
 
           // yea, call the thing script now !!!!
-          callThingStack.push(options.thing);
           context=things[options.thing].scriptfunction(context);
           callThingStack.pop();
 
@@ -2023,14 +2032,15 @@ var iotb = function(brokersettings)
         }
         catch(e)
         {
+          callThingStack.pop();
     /*
           console.log(e);
           console.log(context.scriptvars);
     */
           things[options.thing].errorlog.push({timestamp:(new Date(Date.now())).toISOString(), msg:e.message});
-          while (things[options.thing].errorlog.length>10) things[options.thing].errorlog.shift();
+          while (things[options.thing].errorlog.length>10) things[options.thing].errorlog.shift();          
           return "Thing Error: A script error occured!";
-        }        
+        }
       }
       else
       {
@@ -2101,7 +2111,9 @@ var iotb = function(brokersettings)
     };
     if (things[inputdata.thing] && (things[inputdata.thing].enabled==true))
     {
-
+      ws.on('error',(e)=>{
+        things[inputdata.thing].errorlog.push({timestamp:(new Date(Date.now())).toISOString(), msg:e});
+      });
       ws.on('message',(msg)=>{
         var error="";
         inputdata.valueraw=msg;
@@ -2242,44 +2254,72 @@ var iotb = function(brokersettings)
       method: "http",
       varname: req.params.varname
     };
-    req.on('data', chunk=>{
-      body+=chunk.toString();
-    });
-    req.on('end',()=>{
-      var error="";
-      inputdata.valueraw=body;
-      try {
-        inputdata.value=JSON.parse(body);
-      }
-      catch(e)
-      {
-        //error="API-Error: Invalid JSON format for value query parameter"
-      }
-      if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
-      if (req.session && checkUserLogin(req.session.user, req.session.password))
-      {
-        inputdata.sessionuser=req.session.user;
-      }
-      inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    if (req.headers.hasOwnProperty('content-length') && req.headers['content-length']<=brokersettings.limits.httpvaluesize)
+    {
+      req.on('data', chunk=>{
+        body+=chunk.toString();
+      });
+      req.on('end',()=>{
+        var error="";
+        inputdata.valueraw=body;
+        try {
+          inputdata.value=JSON.parse(body);
+        }
+        catch(e)
+        {
+          //error="API-Error: Invalid JSON format for value query parameter"
+        }
+        if (req.query.hasOwnProperty("keytoken")) inputdata.keytoken=req.query.keytoken;
+        if (req.session && checkUserLogin(req.session.user, req.session.password))
+        {
+          inputdata.sessionuser=req.session.user;
+        }
+        inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
-      var result="";
-      if (error=="")
-      {
-        result=callThing(inputdata);
-        res.header("Content-Type", "application/json");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(200).send(JSON.stringify(result));
-      }
-      else
-      {
-        result=error;
-        res.header("Content-Type", "application/json");
-        res.header("Access-Control-Allow-Origin","*");
-        res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
-        res.status(400).send(JSON.stringify(result));
-      }
-    });
+        var result="";
+        if (error=="")
+        {
+          result=callThing(inputdata);
+          if (result===null || !result.hasOwnProperty("type") || !result.hasOwnProperty("res"))
+          {
+            res.status(200).send(JSON.stringify(null));
+          }
+          else
+          {
+            if (result.type=="txt")
+            {
+              res.header("Content-Type", "text/plain");
+              res.header("Access-Control-Allow-Origin","*");
+              res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+              res.status(200).send(result.res);
+            }
+            else if (result.type=="html")
+            {
+              res.header("Content-Type", "text/html");
+              res.header("Access-Control-Allow-Origin","*");
+              res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+              res.status(200).send(result.res);
+            } else {
+              res.header("Content-Type", "application/json");
+              res.header("Access-Control-Allow-Origin","*");
+              res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+              res.status(200).send(JSON.stringify(result.res));  
+            }
+          }     
+        }
+        else
+        {
+          result=error;
+          res.header("Content-Type", "application/json");
+          res.header("Access-Control-Allow-Origin","*");
+          res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
+          res.status(400).send(JSON.stringify(result));
+        }
+      });
+    } else
+    {
+      return res.status(413).send('"too big request body"');
+    }
   });
 
 

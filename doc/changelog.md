@@ -11,6 +11,11 @@
  * Todo: Activation Functions (FNN Layer can be done with matrix operations)
  * Todo: Fix problem with different handling of directories in ZIP-files
 
+## Work
+ * New: Limits of value-json for POST-Requests and Web-Sockets introduced. See brokersettings.
+ * Fixed: Problem at POST-Request added
+ 
+
 ## 20241224
  * New: Errors during the thing execution are shown now in the thing-list. A click on the chip opens a dialog with the errors.
  * New: __sendEMail__ function 
