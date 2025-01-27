@@ -385,7 +385,7 @@ var iotb = function(brokersettings)
 
   var websites={};
 
-  var statistics={totalcalls:{http:0, init:0, thing:0, tick:0}};
+  var statistics={totalcalls:{http:0, init:0, thing:0, tick:0},largest:{httpgetvalue:0,httppostvalue:0,websocketvalue:0}};
 
   var loadSubscriptionsFromDB=function(nextevent)
   {
@@ -852,6 +852,311 @@ var iotb = function(brokersettings)
         }
       }
       return res;
+    },
+
+    httpRequest:function(context,args)
+    {
+      if (args.length==3)
+      {
+        var method=args[0]();
+        var url = new URL(args[1]());
+        var props=args[2]();
+        var options={
+          method:method,
+        };
+        if (props.hasOwnProperty("jsonbody"))
+        {
+          var jsonbody=props["jsonbody"];
+          try{
+            options.body=JSON.stringify(jsonbody);
+            options.headers={
+              'Content-Type': 'application/json'
+            };
+          }
+          catch(e)
+          {
+          }
+        }
+        else if (props.hasOwnProperty("body"))
+        {
+          options.body=props["body"];
+        }
+        if (props.hasOwnProperty("headers"))
+        {
+          options.headers=props.headers;
+        }
+        if (props.hasOwnProperty("query"))
+        {
+          Object.keys(props.query).forEach(key => url.searchParams.append(key, props.query[key]));
+        }
+        var event={};
+        fetch(url,options)
+        .then(res => {
+          event.headers={};
+          res.headers.forEach(function(val,key){
+            event.headers[key]=val;
+          });
+          return res.text();
+        })
+        .then(body => {
+          if (props.hasOwnProperty("eventid"))
+          {
+            event.id=props.eventid;
+            event.body=body;
+            event.unixtime=Date.now();
+            try{
+              event.json=JSON.parse(body);
+            }
+            catch(e)
+            {
+            }
+            var thing=things[context.locked.thingname];
+            thing.events.push(event);
+            if (thing.events.length>10)
+            {
+              thing.events.shift();
+            }
+          }
+        }).catch(function(error){
+        });
+      }
+    },
+
+    writeDB:function(context, args)
+    {
+      if (args.length==2)
+      {
+        dbThingDbVars.upsert(
+          {thing: context.locked.thingname,
+          varname: args[0](),
+          value: JSON.stringify(args[1]())
+          }).then(test=>{
+          });
+      }
+    },
+
+    ramVar:function(context, args)
+    {
+      var thing=things[context.locked.thingname];
+      if (args.length==1 || args.length==2)
+      {
+        if (!thing.ramvars.hasOwnProperty(args[0]()))
+        {
+          var defaultvalue=0;
+          if (args.length==2 && typeof(args[1])==="function") defaultvalue=args[1]();
+          thing.ramvars[args[0]()]=defaultvalue;
+        }
+      }
+      var obj={
+        get value()
+        {
+          if (args.length==1 || args.length==2)
+          {
+            return thing.ramvars[args[0]()];
+          }
+          else
+          {
+            return 0;
+          }
+        },
+        set value(val)
+        {
+          if (args.length==1 || args.length==2)
+          {
+            thing.ramvars[args[0]()]=val;
+          }
+        }
+      };
+      return obj;
+    },
+
+    thingVar:function(context, args)
+    {
+      var obj={
+        get value()
+        {
+          var inputvariables={
+            thing: args[0](),
+            method: "thing",
+            from: context.locked.thingname,
+            varname: args[1]()
+          };
+          if (args[2] && (typeof args[2]=="function")) {
+            var keytoken=keytoken=args[2]();
+            if (keytoken.indexOf(":")==(keytoken.length-1))
+            {
+              keytoken=keytoken.substr(0,keytoken.length-1)
+            }
+            if (keytoken.indexOf(":")<0)
+            {
+              var keyobj=keys[keytoken];
+              var keyname=keytoken;
+              keytoken="";
+              if (keyobj)
+              {
+                for(var id in newthing.owners)
+                {
+                  var owner=newthing.owners[id];
+                  if (keyobj.owners.indexOf(owner)>=0)
+                  {
+                    keytoken=keyname+":"+keyobj.token;
+                    break;
+                  }
+                }
+              }
+            }
+            if (keytoken.length>0)
+            {
+              inputvariables.keytoken=keytoken;
+            }
+          }
+          var obj=callThing(inputvariables);
+          var json=JSON.stringify(obj);
+          var result=JSON.parse(json);
+          return result;
+        },
+        set value(val)
+        {
+          var inputvariables={
+            thing: args[0](),
+            method: "thing",
+            from: context.locked.thingname,
+            varname: args[1]()
+          };
+          inputvariables.value=JSON.parse(JSON.stringify(val));
+          if (args[2] && (typeof args[2]=="function")) {
+            var keytoken=keytoken=args[2]();
+            if (keytoken.indexOf(":")==(keytoken.length-1))
+            {
+              keytoken=keytoken.substr(0,keytoken.length-1)
+            }
+            if (keytoken.indexOf(":")<0)
+            {
+              var keyobj=keys[keytoken];
+              var keyname=keytoken;
+              keytoken="";
+              if (keyobj)
+              {
+                for(var id in newthing.owners)
+                {
+                  var owner=newthing.owners[id];
+                  if (keyobj.owners.indexOf(owner)>=0)
+                  {
+                    keytoken=keyname+":"+keyobj.token;
+                    break;
+                  }
+                }
+              }
+            }
+            if (keytoken.length>0)
+            {
+              inputvariables.keytoken=keytoken;
+            }
+          }
+          var result=callThing(inputvariables);
+        }
+      };
+      return obj;
+    },
+
+    callThingWithKey:function(context, args)
+    {
+      var result="";
+      if (args.length>=3 && (typeof args[0]=="function") && (typeof args[1]=="function") && (typeof args[2]=="function"))
+      {
+        var inputvariables={
+          thing: args[0](),
+          method: "thing",
+          from: context.locked.thingname,
+          varname: args[1]()
+        };
+        var keytoken=keytoken=args[2]();
+        if (keytoken.indexOf(":")==(keytoken.length-1))
+        {
+          keytoken=keytoken.substr(0,keytoken.length-1)
+        }
+        if (keytoken.indexOf(":")<0)
+        {
+          var keyobj=keys[keytoken];
+          var keyname=keytoken;
+          keytoken="";
+          if (keyobj)
+          {
+            for(var id in newthing.owners)
+            {
+              var owner=newthing.owners[id];
+              if (keyobj.owners.indexOf(owner)>=0)
+              {
+                keytoken=keyname+":"+keyobj.token;
+                break;
+              }
+            }
+          }
+        }
+        if (keytoken.length>0)
+        {
+          inputvariables.keytoken=keytoken;
+        }
+        if (args.length==4 && (typeof args[3]=="function"))
+        {
+          inputvariables.value=JSON.parse(JSON.stringify(args[3]()));
+        }
+        result=JSON.parse(JSON.stringify(callThing(inputvariables)));
+      }
+      return result;
+    },
+
+    callThing:function(context, args)
+    {
+      var result="";
+      if (args.length>=2 && (typeof args[0]=="function") && (typeof args[1]=="function"))
+      {
+        var inputvariables={
+          thing: args[0](),
+          method: "thing",
+          from: context.locked.thingname,
+          varname: args[1]()
+        };
+        if (args.length==3 && (typeof args[2]=="function"))
+        {
+          inputvariables.value=JSON.parse(JSON.stringify(args[2]()));
+        }
+        result=JSON.parse(JSON.stringify(callThing(inputvariables)));
+      }
+      return result;
+    },
+
+    webPush:function(context,args)
+    {
+      if (args.length==2)
+      {
+        var topic="/"+context.locked.thingname+"/"+args[0]();
+        var arg1=args[1]();
+        var notification;
+        if (typeof arg1==="string")
+        {
+          notification={title: "IoT-Broker "+context.locked.thingname, message: arg1};
+        }
+        else if (typeof arg1==="object")
+        {
+          notification=arg1;
+        }
+        if (typeof notification!="undefined")
+        {
+          for(var endpoint in subscriptions)
+          {
+            let subscription=subscriptions[endpoint];
+            if (subscription.enabled===true)
+            {
+              if (subscription.topics.indexOf(topic)>=0)
+              {
+                sendPushNotification(subscription.subscription, notification);
+              }
+            }
+          }
+        }
+      }
+      return true;
     }
   };
 
@@ -1445,335 +1750,14 @@ var iotb = function(brokersettings)
       newthing.description=thing.description || "";
       newthing.ramvars={};
       newthing.events=[];
+      newthing.profiling={scriptruntime:0, initunixtime: Date.now(), load:0};
+      newthing.errorlog=[];
 
       var scriptoptions={
-        functions: iotscriptfunctions,
-      };
-
-      scriptoptions.functions.httpRequest=function(context,args)
-      {
-        if (args.length==3)
-        {
-          var method=args[0]();
-          var url = new URL(args[1]());
-          var props=args[2]();
-          var options={
-            method:method,
-          };
-          if (props.hasOwnProperty("jsonbody"))
-          {
-            var jsonbody=props["jsonbody"];
-            try{
-              options.body=JSON.stringify(jsonbody);
-              options.headers={
-                'Content-Type': 'application/json'
-              };
-            }
-            catch(e)
-            {
-            }
-          }
-          else if (props.hasOwnProperty("body"))
-          {
-            options.body=props["body"];
-          }
-          if (props.hasOwnProperty("headers"))
-          {
-            options.headers=props.headers;
-          }
-          if (props.hasOwnProperty("query"))
-          {
-            Object.keys(props.query).forEach(key => url.searchParams.append(key, props.query[key]));
-          }
-//          console.log("HTTP Request");
-//          console.log(url);
-          var event={};
-          fetch(url,options)
-          .then(res => {
-            event.headers={};
-//            console.log(res.headers.raw());
-            res.headers.forEach(function(val,key){
-//              console.log(key+": "+value);
-              event.headers[key]=val;
-            });
-            return res.text();
-          })
-          .then(body => {
-            if (props.hasOwnProperty("eventid"))
-            {
-              event.id=props.eventid;
-              event.body=body;
-              event.unixtime=Date.now();
-              try{
-                event.json=JSON.parse(body);
-              }
-              catch(e)
-              {
-              }
-              newthing.events.push(event);
-              if (newthing.events.length>10)
-              {
-                newthing.events.shift();
-              }
-            }
-          }).catch(function(error){
-          });
-        }
-        // "GET","https://iotdev.htlwy.ac.at",{eventid:"asdf", query:{a:12,b:323}, data:"asdfadfqwer"}
-      };
-
-      scriptoptions.functions.writeDB=function(context, args)
-      {
-        if (args.length==2)
-        {
-          dbThingDbVars.upsert(
-            {thing: thingname,
-            varname: args[0](),
-            value: JSON.stringify(args[1]())
-            }).then(test=>{
-            });
-        }
-      };
-
-      scriptoptions.functions.ramVar=function(context, args)
-      {
-        if (args.length==1 || args.length==2)
-        {
-          if (!newthing.ramvars.hasOwnProperty(args[0]()))
-          {
-            var defaultvalue=0;
-            if (args.length==2 && typeof(args[1])==="function") defaultvalue=args[1]();
-            newthing.ramvars[args[0]()]=defaultvalue;
-          }
-        }
-        var obj={
-          get value()
-          {
-            if (args.length==1 || args.length==2)
-            {
-              return newthing.ramvars[args[0]()];
-            }
-            else
-            {
-              return 0;
-            }
-          },
-          set value(val)
-          {
-            if (args.length==1 || args.length==2)
-            {
-              newthing.ramvars[args[0]()]=val;
-            }
-          }
-        };
-        return obj;
-      };
-
-      scriptoptions.functions.thingVar=function(context, args)
-      {
-        var obj={
-          get value()
-          {
-            var inputvariables={
-              thing: args[0](),
-              method: "thing",
-              from: thingname,
-              varname: args[1]()
-            };
-            if (args[2] && (typeof args[2]=="function")) {
-              var keytoken=keytoken=args[2]();
-              if (keytoken.indexOf(":")==(keytoken.length-1))
-              {
-                keytoken=keytoken.substr(0,keytoken.length-1)
-              }
-              if (keytoken.indexOf(":")<0)
-              {
-                var keyobj=keys[keytoken];
-                var keyname=keytoken;
-                keytoken="";
-                if (keyobj)
-                {
-                  for(var id in newthing.owners)
-                  {
-                    var owner=newthing.owners[id];
-                    if (keyobj.owners.indexOf(owner)>=0)
-                    {
-                      keytoken=keyname+":"+keyobj.token;
-                      break;
-                    }
-                  }
-                }
-              }
-              if (keytoken.length>0)
-              {
-                inputvariables.keytoken=keytoken;
-              }
-            }
-            var obj=callThing(inputvariables);
-            var json=JSON.stringify(obj);
-  /*
-            try{
-              JSON.parse(json);
-            }
-            catch(e)
-            {
-              console.log("================================");
-              console.log(inputvariables);
-              console.log(obj);
-              console.log(json);
-              console.log("================================");
-            }
-  */
-            var result=JSON.parse(json);
-            return result;
-          },
-          set value(val)
-          {
-            var inputvariables={
-              thing: args[0](),
-              method: "thing",
-              from: thingname,
-              varname: args[1]()
-            };
-            inputvariables.value=JSON.parse(JSON.stringify(val));
-            if (args[2] && (typeof args[2]=="function")) {
-              var keytoken=keytoken=args[2]();
-              if (keytoken.indexOf(":")==(keytoken.length-1))
-              {
-                keytoken=keytoken.substr(0,keytoken.length-1)
-              }
-              if (keytoken.indexOf(":")<0)
-              {
-                var keyobj=keys[keytoken];
-                var keyname=keytoken;
-                keytoken="";
-                if (keyobj)
-                {
-                  for(var id in newthing.owners)
-                  {
-                    var owner=newthing.owners[id];
-                    if (keyobj.owners.indexOf(owner)>=0)
-                    {
-                      keytoken=keyname+":"+keyobj.token;
-                      break;
-                    }
-                  }
-                }
-              }
-              if (keytoken.length>0)
-              {
-                inputvariables.keytoken=keytoken;
-              }
-            }
-            var result=callThing(inputvariables);
-          }
-        };
-        return obj;
-      };
-
-      scriptoptions.functions.callThingWithKey=function(context, args)
-      {
-        var result="";
-        if (args.length>=3 && (typeof args[0]=="function") && (typeof args[1]=="function") && (typeof args[2]=="function"))
-        {
-          var inputvariables={
-            thing: args[0](),
-            method: "thing",
-            from: thingname,
-            varname: args[1]()
-          };
-          var keytoken=keytoken=args[2]();
-          if (keytoken.indexOf(":")==(keytoken.length-1))
-          {
-            keytoken=keytoken.substr(0,keytoken.length-1)
-          }
-          if (keytoken.indexOf(":")<0)
-          {
-            var keyobj=keys[keytoken];
-            var keyname=keytoken;
-            keytoken="";
-            if (keyobj)
-            {
-              for(var id in newthing.owners)
-              {
-                var owner=newthing.owners[id];
-                if (keyobj.owners.indexOf(owner)>=0)
-                {
-                  keytoken=keyname+":"+keyobj.token;
-                  break;
-                }
-              }
-            }
-          }
-          if (keytoken.length>0)
-          {
-            inputvariables.keytoken=keytoken;
-          }
-          if (args.length==4 && (typeof args[3]=="function"))
-          {
-            inputvariables.value=JSON.parse(JSON.stringify(args[3]()));
-          }
-          result=JSON.parse(JSON.stringify(callThing(inputvariables)));
-        }
-        return result;
-      };
-
-      scriptoptions.functions.callThing=function(context, args)
-      {
-        var result="";
-        if (args.length>=2 && (typeof args[0]=="function") && (typeof args[1]=="function"))
-        {
-          var inputvariables={
-            thing: args[0](),
-            method: "thing",
-            from: thingname,
-            varname: args[1]()
-          };
-          if (args.length==3 && (typeof args[2]=="function"))
-          {
-            inputvariables.value=JSON.parse(JSON.stringify(args[2]()));
-          }
-          result=JSON.parse(JSON.stringify(callThing(inputvariables)));
-        }
-        return result;
-      };
-
-      scriptoptions.functions.webPush=function(context,args)
-      {
-        if (args.length==2)
-        {
-          var topic="/"+thingname+"/"+args[0]();
-          var arg1=args[1]();
-          var notification;
-          if (typeof arg1==="string")
-          {
-            notification={title: "IoT-Broker "+thingname, message: arg1};
-          }
-          else if (typeof arg1==="object")
-          {
-            notification=arg1;
-          }
-          if (typeof notification!="undefined")
-          {
-            for(var endpoint in subscriptions)
-            {
-              let subscription=subscriptions[endpoint];
-              if (subscription.enabled===true)
-              {
-                if (subscription.topics.indexOf(topic)>=0)
-                {
-                  sendPushNotification(subscription.subscription, notification);
-                }  
-              }
-            }
-          }
-        }
-        return true;
+        functions: iotscriptfunctions
       };
 
       newthing.scriptfunction=thingscriptcompiler.compile(newthing.source,scriptoptions);
-      newthing.profiling={scriptruntime:0, initunixtime: Date.now(), load:0};
-      newthing.errorlog=[];
       if (things[thingname] && things[thingname].timeoutID)
       {
         clearTimeout(things[thingname].timeoutID);
@@ -1812,6 +1796,14 @@ var iotb = function(brokersettings)
       }
       else if (typeof newthing.scriptfunction === "string")
       {
+        if (opt.loadFromDB===true)
+        {
+          // in case of an error due to incompatibility (e.g. obsolete script functions)
+          // still add thing to things-list, but disable it and add an error to the log
+          newthing.enabled=false;
+          newthing.errorlog.push({timestamp:(new Date(Date.now())).toISOString(), msg: "Compile/Load Error: "+newthing.scriptfunction});
+          things[thingname]=newthing;
+        }
         return newthing.scriptfunction;
       }
       else {
@@ -2116,6 +2108,7 @@ var iotb = function(brokersettings)
       });
       ws.on('message',(msg)=>{
         var error="";
+        statistics.largest.websocketvalue=Math.max(statistics.largest.websocketvalue,msg.length);
         inputdata.valueraw=msg;
         try
         {
@@ -2191,6 +2184,7 @@ var iotb = function(brokersettings)
     var error="";
     if (req.query.hasOwnProperty("value")) {
       inputdata.valueraw=req.query.value;
+      statistics.largest.httpgetvalue=Math.max(statistics.largest.httpgetvalue,inputdata.valueraw.length);
       try {
         inputdata.value=JSON.parse(req.query.value);
       }
@@ -2262,6 +2256,7 @@ var iotb = function(brokersettings)
       req.on('end',()=>{
         var error="";
         inputdata.valueraw=body;
+        statistics.largest.httppostvalue=Math.max(statistics.largest.httppostvalue,inputdata.valueraw.length);
         try {
           inputdata.value=JSON.parse(body);
         }
@@ -2566,6 +2561,7 @@ var iotb = function(brokersettings)
     }    
 
     var data={
+      statistics:statistics,
       users:_userslist,
       things:_thingslist,
       websites:_websiteslist,

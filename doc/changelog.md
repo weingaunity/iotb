@@ -12,8 +12,12 @@
  * Todo: Fix problem with different handling of directories in ZIP-files
 
 ## Work
- * New: Limits of value-json for POST-Requests and Web-Sockets introduced. See brokersettings.
+
+## 20250127
+ * New: Limits of value-json for POST-Requests and Web-Sockets introduced. See brokersettings. Default value is 20000Bytes for the passed value.
  * Fixed: Problem at POST-Request added
+ * Fixed: In case of a changed/removed broker funktion, the thing was not loaded and showen up. This is fixed. The thing is disabled and an error is added to the things error-log.
+ * Added: Statistics for HTTP-GET, HTTP-POST and WebSocket value size added.
  
 
 ## 20241224
