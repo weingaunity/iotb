@@ -2,7 +2,7 @@
   "name": "iotb",
   "description": "IoTB - IoT Broker - Scriptable micro cloud services with REST API and web hosting environment.",
   "author": "DI Klaus Weichinger, MSc <snaky.1@gmx.at>",
-  "version": "24.12.01",
+  "version": "25.01.01",
   "homepage": "https://github.com/weingaunity/iotb",
   "license": "GPL-3.0-only",
   "keywords": [
