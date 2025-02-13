@@ -38,8 +38,8 @@ var iotbapp=iotb({
   limits:{  // default settings, can be changed
     zipfileupload_mb:5,
     websitetotalsize_mb:10,
-    websocketvaluesize:2000, // if value-size exceeds, received package is ignored
-    httpvaluesize:4000 // if value-size exceeds, received package is ignored
+    websocketvaluesize:10000, // if value-size exceeds, received package is ignored
+    httpvaluesize:10000 // if value-size exceeds, received package is ignored
   }
 });
 

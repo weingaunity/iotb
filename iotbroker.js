@@ -54,14 +54,15 @@ var iotb = function(brokersettings)
 {
   if (!brokersettings.hasOwnProperty("limits"))
   {
-    if (!brokersettings.limits.hasOwnProperty("websocketvaluesize"))
+    brokersettings.limits={};
+  }
+  if (!brokersettings.limits.hasOwnProperty("websocketvaluesize"))
     {
       brokersettings.limits.websocketvaluesize=20000;
     }
     if (!brokersettings.limits.hasOwnProperty("httpvaluesize"))
     {
       brokersettings.limits.httpvaluesize=20000;
-    }
   }
   const publicVapidKey = brokersettings.webpush.publickey;
   const privateVapidKey = brokersettings.webpush.privatekey;
@@ -804,15 +805,17 @@ var iotb = function(brokersettings)
               }
             }
           }
-          if (msg.hasOwnProperty("tousers"))
+          if (msg.hasOwnProperty("toowners"))
           {
-            var tousers=msg.tousers;
-            for(var user of tousers)
+            var toowners=msg.toowners;
+            var thing=things[context.locked.thingname];
+            var owners=thing.owners;
+            for(var owner of owners)
             {
-              if (users.hasOwnProperty(user))
+              //if (users.hasOwnProperty(user))
+              if (toowners.includes(owner) || owner=="*")
               {
-                
-                var email=users[user].email;
+                var email=users[owner].email;
                 if (email.length>0 && email.indexOf("@")>0)
                 {
                   if (to.includes(email)==false)
@@ -830,7 +833,7 @@ var iotb = function(brokersettings)
             {
               var mail={
                 to:to,
-                subject:msg.subject
+                subject:msg.subject+" [thing/"+context.locked.thingname+"]"
               };
               if (msg.hasOwnProperty("message"))
               {
@@ -2903,7 +2906,7 @@ var iotb = function(brokersettings)
             filepath: zipEntry.entryName,
             content: ""
           };
-          console.log(data);
+          //console.log(data);
           if (zipEntry.entryName.endsWith("/")==false) {
             data.content=zipEntry.getData();
             totalsum+=data.content.length;

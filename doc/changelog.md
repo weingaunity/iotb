@@ -10,8 +10,13 @@
  * Todo: deinit event. Still not clear if this feature is required.
  * Todo: Activation Functions (FNN Layer can be done with matrix operations)
  * Todo: Fix problem with different handling of directories in ZIP-files
+ * Todo: Websocket counter add to statistics
 
 ## Work
+
+## 20250213
+ * Fixed: Issue with default brokersettings for limits.
+ * Changed: EMails could be sent to owners only or to registered email addresses in the brokersettings.
 
 ## 20250127
  * New: Limits of value-json for POST-Requests and Web-Sockets introduced. See brokersettings. Default value is 20000Bytes for the passed value.
