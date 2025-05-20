@@ -13,6 +13,8 @@
  * Todo: Websocket counter add to statistics
 
 ## Work
+ * New: __requestquery__ variable exists now which contains all http request query values (except keytoken)
+ * Fixed: Crash fixed if ZIP-File Upload is not a ZIP-File
 
 ## 20250213
  * Fixed: Issue with default brokersettings for limits.

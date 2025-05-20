@@ -1951,6 +1951,7 @@ var iotb = function(brokersettings)
         }
         if (options.hasOwnProperty('value')) context.scriptvars.value=options.value;
         if (options.hasOwnProperty('valueraw')) context.scriptvars.valueraw=options.valueraw;
+        if (options.hasOwnProperty('requestquery')) context.scriptvars.requestquery=options.requestquery;
         if (options.hasOwnProperty('sessionuser')) context.scriptvars.sessionuser=options.sessionuser;
 
         if (options.hasOwnProperty('keytoken')) {
@@ -2202,6 +2203,17 @@ var iotb = function(brokersettings)
       inputdata.sessionuser=req.session.user;
     }
     inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    inputdata.requestquery={};
+    for(var fieldname in req.query) {
+      if (fieldname=="keytoken")
+      {
+        // keytoken ist not passed to the query object due to security concerns
+      }
+      else
+      {
+        inputdata.requestquery[fieldname]=req.query[fieldname];
+      }
+    }
 
     var result="";
     if (error=="")
@@ -2251,6 +2263,7 @@ var iotb = function(brokersettings)
       method: "http",
       varname: req.params.varname
     };
+    // express convert headers to lower-case
     if (req.headers.hasOwnProperty('content-length') && req.headers['content-length']<=brokersettings.limits.httpvaluesize)
     {
       req.on('data', chunk=>{
@@ -2273,6 +2286,18 @@ var iotb = function(brokersettings)
           inputdata.sessionuser=req.session.user;
         }
         inputdata.clientipaddr=req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+        inputdata.requestquery={};
+        for(var fieldname in req.query) {
+          if (fieldname=="keytoken")
+          {
+            // keytoken ist not passed to the query object due to security concerns
+          }
+          else
+          {
+            inputdata.requestquery[fieldname]=req.query[fieldname];
+          }
+        }    
 
         var result="";
         if (error=="")
@@ -2895,47 +2920,53 @@ var iotb = function(brokersettings)
       }
       else
       {
-        let buffer=req.file.buffer;
-        let zip = new AdmZip(buffer);
-        let zipEntries = zip.getEntries();
-        var bulk=[];
-        var totalsum=0;
-        zipEntries.forEach(function(zipEntry) {
-          var data={
-            website: websitename,
-            filepath: zipEntry.entryName,
-            content: ""
-          };
-          //console.log(data);
-          if (zipEntry.entryName.endsWith("/")==false) {
-            data.content=zipEntry.getData();
-            totalsum+=data.content.length;
-            if (totalsum>websitelimit_mb*1000*1000)
-            {
-            }
-            else
-            {
+        try {
+          let buffer=req.file.buffer;
+          let zip = new AdmZip(buffer);
+          let zipEntries = zip.getEntries();
+          var bulk=[];
+          var totalsum=0;
+          zipEntries.forEach(function(zipEntry) {
+            var data={
+              website: websitename,
+              filepath: zipEntry.entryName,
+              content: ""
+            };
+            //console.log(data);
+            if (zipEntry.entryName.endsWith("/")==false) {
+              data.content=zipEntry.getData();
+              totalsum+=data.content.length;
+              if (totalsum>websitelimit_mb*1000*1000)
+              {
+              }
+              else
+              {
+                bulk.push(data);
+              }
+            } else {
+              data.content="";
               bulk.push(data);
             }
-          } else {
-            data.content="";
-            bulk.push(data);
-          }
-        });
-        if (totalsum>websitelimit_mb*1000*1000)
-        {
-          res.status(406).send("ERROR Website not inserted (total website limit "+websitelimit_mb+"MB).");
-          return;
-        }
-        else
-        {
-          dbWebSiteFiles.destroy({where:{website: websitename}}).then(function(response){
-            dbWebSiteFiles.bulkCreate(bulk).then(function(response){
-              res.status(201).send("Website "+websitename+" upload finished! "+response.length+" files inserted.");
-            });
-          }).catch(function(error){
-            res.status(400).send("ERROR Database issue during uploading "+websitename+". (1)");
           });
+          if (totalsum>websitelimit_mb*1000*1000)
+          {
+            res.status(406).send("ERROR Website not inserted (total website limit "+websitelimit_mb+"MB).");
+            return;
+          }
+          else
+          {
+            dbWebSiteFiles.destroy({where:{website: websitename}}).then(function(response){
+              dbWebSiteFiles.bulkCreate(bulk).then(function(response){
+                res.status(201).send("Website "+websitename+" upload finished! "+response.length+" files inserted.");
+              });
+            }).catch(function(error){
+              res.status(400).send("ERROR Database issue during uploading "+websitename+". (1)");
+            });
+          }
+        } catch(e)
+        {
+          res.status(406).send("ERROR Invalid ZIP-File Upload!");
+          return;
         }
       }
     });

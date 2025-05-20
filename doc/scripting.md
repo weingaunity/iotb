@@ -23,6 +23,7 @@ action         | "http", "init", "tick", "thing", "broker"
 name           | name passed by http request or thing call
 value          | value passed by the http request or thing call handled as JSON object
 valueraw       | raw request-body of the http POST-request
+requestquery   | a dictonary object that contains all request query fields (except keytoken)
 from           | caller thingname when caller is a thing
 unixtime       | value with the current unix time in milliseconds
 sessionuser    | current logged in iotbroker user name (action=="http" only)
