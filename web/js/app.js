@@ -1550,7 +1550,7 @@ window.onload = function() {
                 // namen müssen gleich sein
                 return 0;
               });
-              insertTab({type:"thingslist", list:list});
+              insertTab({type:"thingslist", list:list,filter:""});
               //vuedata.tabs.unshift({type:"thingslist", list:list});
             },
             error:function(request, status, error){
@@ -1639,10 +1639,17 @@ window.onload = function() {
       openURL: function(url) {
         Quasar.utils.openURL(url)
       },
-      setcolor: function(r,g,b){
-        setIoTVariable('etecturm','led_red',r);
-        setIoTVariable('etecturm','led_green',g);
-        setIoTVariable('etecturm','led_blue',b);
+      applyThingListFilter:function(thing,filter)
+      {
+        var str="["+thing.thing+"] ["+thing.description+"] ["+thing.owners.join('] [')+"] ["+thing.tags.join('] [')+"]";
+        str=str.toLowerCase();
+        var res=true;
+        var flist=filter.toLowerCase().split((" "));
+        for(var f of flist)
+        {
+          if (str.indexOf(f)<0) res=false;
+        }
+        return res;
       }
     },
     computed: {

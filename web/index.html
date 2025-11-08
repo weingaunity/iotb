@@ -230,11 +230,18 @@
           <q-card v-if="tab.type=='thingslist'">
             <q-card-title>
               My things
-              <q-btn round flat icon="close" slot="right"  @click.native="close(tab,index);">
+              <q-btn round flat icon="close" slot="right" @click.native="close(tab,index);">
               </q-btn>
             </q-card-title>
             <q-card-main>
-              <q-toolbar v-for="(thing,index) in tab.list" color="primary" inverted>
+              <q-input type="search" hint="Search" placeholder="Filter..." v-model="tab.filter">
+                <template v-slot:append>
+                  <q-icon name="search" />
+                </template>                
+              </q-input>
+
+              <q-toolbar v-for="(thing,index) in tab.list" color="primary" inverted
+                v-if="applyThingListFilter(thing,tab.filter)">
                 <q-btn flat round dense icon="create" @click.native="search('thing:'+thing.thing,tab);"></q-btn>
                 <q-toolbar-title>
                   /thing/{{thing.thing}}
