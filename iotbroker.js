@@ -357,7 +357,15 @@ var iotb = function(brokersettings)
     .catch(function(){
       subscriptions[sub.endpoint].error=Date.now();
       subscriptions[sub.endpoint].trycounter+=1;
+      var removesub=false;
       if ((Date.now() > (subscriptions[sub.endpoint].lastokunixtime+ 1000*60*60*24*14)) && (subscriptions[sub.endpoint].trycounter>4)) // delete subscription if last valid command was 14 days ago
+      {
+        //removesub=true;
+      }
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        removesub=true;
+      }
+      if (removesub==true)
       {
         dbSubscriptions.destroy({where:{endpoint: sub.endpoint}}).then(function(response){
           delete subscriptions[sub.endpoint];
@@ -2380,7 +2388,31 @@ var iotb = function(brokersettings)
       var error="";
       try {
         const data = JSON.parse(body);
-        if (data.hasOwnProperty("subscription") && data.hasOwnProperty("topics") && data.hasOwnProperty("enabled"))
+        if (data.hasOwnProperty("subscription") && data.hasOwnProperty("oldsubscription") && subscriptions.hasOwnProperty(data.oldsubscription.endpoint))
+        {
+          try {
+            dbSubscriptions.destroy({where:{endpoint: data.oldsubscription.endpoint}}).then(function(response){
+              var sub=subscriptions[data.oldsubscription.endpoint];
+
+              delete subscriptions[data.oldsubscription.endpoint];
+
+              sub.subscription=data.subscription;
+              var dbdata={
+                endpoint: data.subscription.endpoint,
+                data: JSON.stringify(sub)
+              };
+              dbSubscriptions.upsert(dbdata).then(test=>{
+                subscriptions[data.subscription.endpoint]=sub;
+                res.status(200).send(JSON.stringify("Subscribed or subscription updated"));
+              });
+            });  
+          }
+          catch(err)
+          {
+            res.status(400).send(JSON.stringify("Database Error"));
+          }
+        }
+        else if (data.hasOwnProperty("subscription") && data.hasOwnProperty("topics") && data.hasOwnProperty("enabled"))
         {
           var sub={
             subscription: data.subscription,
