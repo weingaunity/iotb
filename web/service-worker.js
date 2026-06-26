@@ -16,19 +16,21 @@ self.addEventListener("push", e => {
 });
 
 self.addEventListener('pushsubscriptionchange', function(event) {
-  event.waitUntil(
-    self.registration.pushManager.subscribe(event.oldSubscription.options)
-      .then(function(newSubscription) {
-        // send new subscription to server
-        fetch("/subscription", {
-          method: "POST",
-          body: JSON.stringify({oldsubscription:event.oldSubscription, subscription:newSubscription}),
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }).then(function(response){
-          //return response.json();
-        });
-      })
-  );
+  if (event.oldSubscription && event.oldSubscription.options) {
+    event.waitUntil(
+        self.registration.pushManager.subscribe(event.oldSubscription.options)
+          .then(function(newSubscription) {
+            // send new subscription to server
+            fetch("/subscription", {
+              method: "POST",
+              body: JSON.stringify({oldsubscription:event.oldSubscription, subscription:newSubscription}),
+              headers: {
+                "Content-Type": "application/json"
+              }
+            }).then(function(response){
+              //return response.json();
+            });
+          })
+    );
+  }
 });
