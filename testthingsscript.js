@@ -222,12 +222,17 @@ program+="print(meanFromArray([1,'2',2,3,10.2]));\n"
 program+="print(medianFromArray([]));\n"
 program+="print(medianFromArray([1,'3',10,2,2]));\n"
 program+="print(medianFromArray([1,'2',2,3,10,10.2]));\n"
+program+="print('FromJSON test ================');\n";
 program+="x=fromJson('{\"y\":null,\"z\":1}');\n";
 program+="print(x);\n";
 program+="print((x.y==null)?'PASSED':'FAILED');\n";
 program+="print((x.z!=null)?'PASSED':'FAILED');\n";
 program+="x.z=null;\n";
 program+="print((x.z==null)?'PASSED':'FAILED');\n";
+program+="x=fromJson('{\"y\":null,\"z\":1');\n";
+program+="print(!defined(x)?'PASSED':'FAILED');\n";
+program+="x=fromJson('{\"y\":null,\"z\":1',false);\n";
+program+="print((x==false)?'PASSED':'FAILED');\n";
 program+="str1='ABCdef';\n";
 program+="arr1=toCharCodes(str1);\n";
 program+="print(arr1);\n";

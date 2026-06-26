@@ -518,11 +518,23 @@ var thingscript = function()
 
       fromJson: function(context,args)
       {
+        var res=undefined;
         if(args.length==1)
         {
-          return JSON.parse(args[0]());
+          try {
+            res=JSON.parse(args[0]());
+          } catch(e) {
+            res=undefined;
+          }
+        } else if (args.length==2)
+        {
+          try {
+            res=JSON.parse(args[0]());
+          } catch(e) {
+            res=args[1]();
+          }
         }
-        else return undefined;
+        return res;
       },
 
       toBase64: function(context,args)

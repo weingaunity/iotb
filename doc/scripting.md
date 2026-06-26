@@ -150,7 +150,7 @@ __hex2dec__(_hexstring_) | Converts a string with a hex number to an integer num
 __dec2hex__(_number_) | Converts an integer (string) to a lower case hex string
 __dec2HEX__(_number_) | Converts an integer (string) to an upper case hex string
 __toJson__(_object_[,true]) | returns the json-string of the passed object. The 2nd argument enables pritty print version of json.
-__fromJson__(_jsonstring_) | converts the passed json-string into an object
+__fromJson__(_jsonstring_,[,_default_]) | converts the passed json-string into an object. If the parsing process failed, undefined is returned or the _default_ object passed as 2nd argument.
 __toCharCodes__(_string_) | Returns an array with the ascii codes
 __fromCharCodes__(_array_) | Returns a string from the array containing ascii codes.
 __toBase64__(_array_) | Converts an array of integers (bytes) to a base64 string.

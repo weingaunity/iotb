@@ -13,6 +13,9 @@
  * Todo: Websocket counter add to statistics
 
 ## Work
+
+## 20260626
+ * Fixed: Error handling added to __fromJSON__ and the possibility to add a default value.
  * New: __requestquery__ variable exists now which contains all http request query values (except keytoken)
  * Fixed: Crash fixed if ZIP-File Upload is not a ZIP-File
 
