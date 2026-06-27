@@ -139,7 +139,7 @@
                   <q-item-main>
                     <q-toggle v-model="tab.enabled" color="secondary" label="Notifications enabled" />
                   </q-item-main>
-                </q-item>    
+                </q-item>                    
                 <q-item multiline>
                   <q-item-side icon="feedback"></q-item-side>
                   <q-item-main>
@@ -147,7 +147,13 @@
                     </q-chips-input>
                   </q-item-main>
                 </q-item>
+                <q-item>
+                  These subscriptions are active for this browser on this device.
+                </q-item>
               </q-list>
+              <q-item>
+                Press save to apply notification subscriptions.
+              </q-item>
             </q-card-main>
             <q-card-actions>
                 <q-btn icon="save" flat @click.native="save(tab,index);">Save</q-btn>
