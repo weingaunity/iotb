@@ -1087,9 +1087,12 @@ window.onload = function() {
               }).then(function (json) {
                 var topics=json.topics;
                 for(var i=0;i<newtopics.length;i++)
-                {
+                {                  
                   var t=newtopics[i];
-                  if (topics.indexOf(t)<0) topics.push(t);
+                  if (t.length>2)
+                  {
+                    if (topics.indexOf(t)<0) topics.push(t);
+                  }
                 }
                 var infodata={type: "notifications", enabled:json.enabled, topics:topics};
                 insertTab(infodata);
@@ -1737,13 +1740,12 @@ window.onload = function() {
         }
       });
   
-      this.search("favoritesstartup");
-
-
       if (getAllUrlParams().hasOwnProperty("subscribe"))
       {
         var topic=decodeURI(getAllUrlParams().subscribe);
         this.search("subscribe:"+topic);
+      } else {
+        this.search("favoritesstartup");
       }
     }
   });
