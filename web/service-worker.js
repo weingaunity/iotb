@@ -17,7 +17,7 @@ self.addEventListener("push", e => {
   if (data.hasOwnProperty("renotify")) obj.renotify=data.renotify;
   if (data.hasOwnProperty("tag")) obj.tag=data.tag;
   if (data.hasOwnProperty("vibrate")) obj.vibrate=data.vibrate;
-  if (data.hasOwnProperty("action")) obj.action=data.action;
+  if (data.hasOwnProperty("actions")) obj.actions=data.actions;
 
 
   self.registration.showNotification(title, obj);
