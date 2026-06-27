@@ -23,6 +23,16 @@ self.addEventListener("push", e => {
   self.registration.showNotification(title, obj);
 });
 
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  if (event.action.startsWith("http"))
+  {
+    event.waitUntil(
+      clients.openWindow(event.action)
+    );
+  }
+});
+
 self.addEventListener('pushsubscriptionchange', function(event) {
   if (event.oldSubscription && event.oldSubscription.options) {
     event.waitUntil(
